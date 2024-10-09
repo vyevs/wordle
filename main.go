@@ -111,8 +111,12 @@ type solver struct {
 	used           [][]bool // Whether we've used a specific grid position.
 	availableChars [26]int  // Count of each available alphabetic character 'a' thru 'z'.
 
-	wordLens          []int      // The lengths of the words we're looking for.
-	initialCandidates [][]string // The candidate words for each word length.
+	// The locations of each char 'a' through 'z' in the grid. charLocations[char][i] is [2]int{rowIndex, colIndex}.
+	charLocations [26][][2]int
+	// The lengths of the words we're looking for. Never changes.
+	wordLens []int
+	// The initial candidate words for each word length. Never changes.
+	initialCandidates [][]string
 
 	wordPos   int
 	curSol    []string
@@ -125,6 +129,15 @@ func (s *solver) solve() ([][]string, error) {
 	for _, row := range s.grid {
 		for _, c := range row {
 			s.availableChars[c-'a']++
+		}
+	}
+
+	for r, row := range s.grid {
+		for c := range row {
+			char := s.grid[r][c]
+			loc := [2]int{r, c}
+
+			s.charLocations[char-'a'] = append(s.charLocations[char-'a'], loc)
 		}
 	}
 
@@ -151,10 +164,10 @@ func (s *solver) solveIt() {
 }
 
 func (s *solver) placeWord(word string) {
-	for r, row := range s.grid {
-		for c := range row {
-			s.placeWordRec(r, c, word, 0)
-		}
+	firstChar := word[0]
+	firstCharLocs := s.charLocations[firstChar-'a']
+	for _, loc := range firstCharLocs {
+		s.placeWordRec(loc[0], loc[1], word, 0)
 	}
 }
 

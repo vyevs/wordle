@@ -118,7 +118,6 @@ type solver struct {
 	// The initial candidate words for each word length. Never changes.
 	initialCandidates [][]string
 
-	wordPos   int
 	curSol    []string
 	solutions [][]string
 }
@@ -143,19 +142,19 @@ func (s *solver) solve() ([][]string, error) {
 
 	s.makeInitialCandidates()
 
-	s.wordPos = 0
 	s.solveIt()
 
 	return s.solutions, nil
 }
 
 func (s *solver) solveIt() {
-	if s.wordPos >= len(s.wordLens) {
+	if len(s.curSol) >= len(s.wordLens) {
 		s.solutions = append(s.solutions, slices.Clone(s.curSol))
 		return
 	}
 
-	cands := s.initialCandidates[s.wordPos]
+	nextWordIdx := len(s.curSol)
+	cands := s.initialCandidates[nextWordIdx]
 	for _, candidate := range cands {
 		if s.haveEnoughCharsForWord(candidate) {
 			s.placeWord(candidate)
@@ -192,12 +191,10 @@ func (s *solver) placeWordRec(r, c int, candidate string, charIdx int) {
 
 	if charIdx == len(candidate)-1 {
 		s.curSol = append(s.curSol, candidate)
-		s.wordPos += 1
 
 		s.solveIt()
 
 		s.curSol = s.curSol[:len(s.curSol)-1]
-		s.wordPos -= 1
 
 		return
 	}

@@ -118,6 +118,7 @@ type solver struct {
 	// The initial candidate words for each word length. Never changes.
 	initialCandidates [][]string
 
+	// curSol is the solution we are in the progress of building.
 	curSol    []string
 	solutions [][]string
 }
@@ -139,6 +140,9 @@ func (s *solver) solve() ([][]string, error) {
 			s.charLocations[char-'a'] = append(s.charLocations[char-'a'], loc)
 		}
 	}
+
+	s.curSol = make([]string, 0, len(s.wordLens))
+	s.solutions = make([][]string, 0, 1024)
 
 	s.makeInitialCandidates()
 

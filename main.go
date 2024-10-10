@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"runtime/pprof"
@@ -42,7 +43,7 @@ func myMain() error {
 
 	fmt.Printf("The dictionary contains %d words\n", len(dict))
 
-	grid, wordLens, err := getPuzzle()
+	grid, wordLens, err := readPuzzle(os.Stdin)
 	if err != nil {
 		return fmt.Errorf("failed to read puzzle: %v", err)
 	}
@@ -68,14 +69,16 @@ func myMain() error {
 	return nil
 }
 
+const N = 7
+
 func checkForDuplicates(solutions [][]string) {
-	uniqSols := make(map[[3]string]struct{})
+	uniqSols := make(map[[N]string]struct{})
 	for _, s := range solutions {
-		uniqSols[[3]string(s)] = struct{}{}
+		uniqSols[[N]string(s)] = struct{}{}
 	}
 
 	fmt.Printf("%d unique solutions\n", len(uniqSols))
-	if true {
+	if false {
 		var i int
 		for sol := range uniqSols {
 			fmt.Printf("%3d: %v\n", i+1, sol)
@@ -384,11 +387,11 @@ func getDictionary(file string) ([]string, error) {
 	return dict, nil
 }
 
-func getPuzzle() ([][]byte, []int, error) {
+func readPuzzle(r io.Reader) ([][]byte, []int, error) {
 	grid := make([][]byte, 0)
 
 	fmt.Println("enter puzzle lines followed by an empty line:")
-	sc := bufio.NewScanner(os.Stdin)
+	sc := bufio.NewScanner(r)
 	for sc.Scan() {
 		line := sc.Text()
 		if line == "" {

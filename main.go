@@ -106,11 +106,6 @@ func solve(grid [][]byte, wordLens []int, dictionary []string) ([][]string, erro
 
 	s.makeInitialCandidates()
 
-	s.wordLenCandidates = make(map[int][]string, len(wordLens))
-	for i, l := range wordLens {
-		s.wordLenCandidates[l] = s.initialCandidates[i]
-	}
-
 	return s.solve()
 }
 
@@ -145,8 +140,6 @@ type solver struct {
 	// The initial candidate words for each word length. Never changes.
 	initialCandidates [][]string
 
-	wordLenCandidates map[int][]string
-
 	// curSol is the solution we are in the progress of building.
 	curSol    []string
 	solutions [][]string
@@ -167,12 +160,10 @@ func (s *solver) findSolutions() {
 	}
 
 	nextWordIdx := len(s.curSol)
-	targetWordLen := s.wordLens[nextWordIdx]
-	cands := s.wordLenCandidates[targetWordLen]
+	cands := s.initialCandidates[nextWordIdx]
 
-	for i, candidate := range cands {
+	for _, candidate := range cands {
 		if s.haveEnoughCharsForWord(candidate) {
-			s.wordLenCandidates[targetWordLen] = cands[i+1:]
 			s.placeWord(candidate)
 		}
 	}

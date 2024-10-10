@@ -21,7 +21,7 @@ func main() {
 }
 
 func myMain() error {
-	dict, err := getDictionary("dictionaries/vlads_dict.txt")
+	dict, err := getDictionary("dictionaries/words_alpha.txt")
 	if err != nil {
 		return fmt.Errorf("failed to get dictionary: %v", err)
 	}
@@ -55,9 +55,9 @@ func myMain() error {
 }
 
 func checkForDuplicates(solutions [][]string) {
-	uniqSols := make(map[[4]string]struct{})
+	uniqSols := make(map[[3]string]struct{})
 	for _, s := range solutions {
-		uniqSols[[4]string(s)] = struct{}{}
+		uniqSols[[3]string(s)] = struct{}{}
 	}
 
 	fmt.Printf("%d unique solutions\n", len(uniqSols))
@@ -106,6 +106,11 @@ func solve(grid [][]byte, wordLens []int, dictionary []string) ([][]string, erro
 
 	s.makeInitialCandidates()
 
+	s.wordLenCandidates = make(map[int][]string, len(wordLens))
+	for i, l := range wordLens {
+		s.wordLenCandidates[l] = s.initialCandidates[i]
+	}
+
 	return s.solve()
 }
 
@@ -140,6 +145,8 @@ type solver struct {
 	// The initial candidate words for each word length. Never changes.
 	initialCandidates [][]string
 
+	wordLenCandidates map[int][]string
+
 	// curSol is the solution we are in the progress of building.
 	curSol    []string
 	solutions [][]string
@@ -148,21 +155,24 @@ type solver struct {
 func (s *solver) solve() ([][]string, error) {
 	defer timeIt(time.Now(), "solving")
 
-	s.solveIt()
+	s.findSolutions()
 
 	return s.solutions, nil
 }
 
-func (s *solver) solveIt() {
+func (s *solver) findSolutions() {
 	if len(s.curSol) >= len(s.wordLens) {
 		s.solutions = append(s.solutions, slices.Clone(s.curSol))
 		return
 	}
 
 	nextWordIdx := len(s.curSol)
-	cands := s.initialCandidates[nextWordIdx]
-	for _, candidate := range cands {
+	targetWordLen := s.wordLens[nextWordIdx]
+	cands := s.wordLenCandidates[targetWordLen]
+
+	for i, candidate := range cands {
 		if s.haveEnoughCharsForWord(candidate) {
+			s.wordLenCandidates[targetWordLen] = cands[i+1:]
 			s.placeWord(candidate)
 		}
 	}
@@ -198,7 +208,7 @@ func (s *solver) placeWordRec(r, c int, candidate string, charIdx int) {
 	if charIdx == len(candidate)-1 {
 		s.curSol = append(s.curSol, candidate)
 
-		s.solveIt()
+		s.findSolutions()
 
 		s.curSol = s.curSol[:len(s.curSol)-1]
 

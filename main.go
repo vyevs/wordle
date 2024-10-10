@@ -55,13 +55,13 @@ func myMain() error {
 }
 
 func checkForDuplicates(solutions [][]string) {
-	uniqSols := make(map[[3]string]struct{})
+	uniqSols := make(map[[4]string]struct{})
 	for _, s := range solutions {
-		uniqSols[[3]string(s)] = struct{}{}
+		uniqSols[[4]string(s)] = struct{}{}
 	}
 
 	fmt.Printf("%d unique solutions\n", len(uniqSols))
-	if false {
+	if true {
 		var i int
 		for sol := range uniqSols {
 			fmt.Printf("%3d: %v\n", i+1, sol)
@@ -85,7 +85,26 @@ func solve(grid [][]byte, wordLens []int, dictionary []string) ([][]string, erro
 		grid:     grid,
 		used:     makeBoolGrid(grid),
 		wordLens: wordLens,
+
+		curSol:    make([]string, 0, len(wordLens)),
+		solutions: make([][]string, 0, 1024),
 	}
+
+	for _, row := range s.grid {
+		for _, c := range row {
+			s.availableChars[c-'a']++
+		}
+	}
+
+	for r, row := range s.grid {
+		for c, char := range row {
+			loc := [2]int{r, c}
+
+			s.charLocations[char-'a'] = append(s.charLocations[char-'a'], loc)
+		}
+	}
+
+	s.makeInitialCandidates()
 
 	return s.solve()
 }
@@ -128,26 +147,6 @@ type solver struct {
 
 func (s *solver) solve() ([][]string, error) {
 	defer timeIt(time.Now(), "solving")
-
-	for _, row := range s.grid {
-		for _, c := range row {
-			s.availableChars[c-'a']++
-		}
-	}
-
-	for r, row := range s.grid {
-		for c := range row {
-			char := s.grid[r][c]
-			loc := [2]int{r, c}
-
-			s.charLocations[char-'a'] = append(s.charLocations[char-'a'], loc)
-		}
-	}
-
-	s.curSol = make([]string, 0, len(s.wordLens))
-	s.solutions = make([][]string, 0, 1024)
-
-	s.makeInitialCandidates()
 
 	s.solveIt()
 

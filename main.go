@@ -43,7 +43,7 @@ func myMain() error {
 	}
 
 	fmt.Printf("found %d solutions\n", len(solutions))
-	if true {
+	if false {
 		for i, s := range solutions {
 			fmt.Printf("%3d: %v\n", i+1, s)
 		}
@@ -120,8 +120,6 @@ type solver struct {
 	// The initial candidate words for each word length. Never changes.
 	initialCandidates [][]string
 
-	candidateIndexToStartAt map[int]int
-
 	// curSol is the solution we are in the progress of building.
 	curSol    []string
 	solutions [][]string
@@ -149,10 +147,6 @@ func (s *solver) solve() ([][]string, error) {
 	s.solutions = make([][]string, 0, 1024)
 
 	s.makeInitialCandidates()
-	s.candidateIndexToStartAt = make(map[int]int, len(s.wordLens))
-	for _, l := range s.wordLens {
-		s.candidateIndexToStartAt[l] = 0 // For each unique word length, start index 0.
-	}
 
 	s.solveIt()
 
@@ -297,12 +291,13 @@ func (s *solver) haveEnoughCharsForWord(w string) bool {
 
 // canPlaceWordOnGrid returns whether word can be placed on the grid in it's current state.
 func (s *solver) canPlaceWordOnGrid(word string) bool {
-	for r, row := range s.grid {
-		for c := range row {
-			if s.canPlaceWordRec(r, c, word, 0) {
-				return true
-			}
+	firstChar := word[0]
+	firstCharLocs := s.charLocations[firstChar-'a']
+	for _, loc := range firstCharLocs {
+		if s.canPlaceWordRec(loc[0], loc[1], word, 0) {
+			return true
 		}
+
 	}
 
 	return false

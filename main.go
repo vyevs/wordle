@@ -37,8 +37,12 @@ func main() {
 
 func myMain() error {
 	var dictFilePath, puzzleFilePath string
-	flag.StringVar(&dictFilePath, "d", "dictionaries/words_alpha.txt", "path to the dictionary file")
+	flag.StringVar(&dictFilePath, "d", "dictionaries/words_alpha.txt", "path to the dictionary file, optional")
 	flag.StringVar(&puzzleFilePath, "p", "", "path to the puzzle file")
+
+	var verbose bool
+	flag.BoolVar(&verbose, "v", false, "whether to print verbose info")
+
 	flag.Parse()
 
 	if puzzleFilePath == "" {
@@ -67,18 +71,18 @@ func myMain() error {
 	}
 
 	fmt.Printf("found %d solutions\n", len(solutions))
-	if false {
+	if verbose {
 		for i, s := range solutions {
 			fmt.Printf("%3d: %v\n", i+1, s)
 		}
 	}
 
-	checkForDuplicates(solutions)
+	checkForDuplicates(solutions, verbose)
 
 	return nil
 }
 
-func checkForDuplicates(solutions [][]string) {
+func checkForDuplicates(solutions [][]string, verbose bool) {
 	uniqSols := make(map[string][]string)
 	for _, sol := range solutions {
 		key := strings.Join(sol, "")
@@ -86,9 +90,9 @@ func checkForDuplicates(solutions [][]string) {
 	}
 
 	fmt.Printf("%d unique solutions\n", len(uniqSols))
-	if false {
+	if verbose {
 		var i int
-		for sol := range uniqSols {
+		for _, sol := range uniqSols {
 			fmt.Printf("%3d: %v\n", i+1, sol)
 			i++
 		}

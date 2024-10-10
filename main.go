@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"bytes"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	if true {
+	if false {
 		f, err := os.Create("cpu.prof")
 		if err != nil {
 			log.Fatal("could not create CPU profile: ", err)
@@ -36,14 +36,27 @@ func main() {
 }
 
 func myMain() error {
-	dict, err := getDictionary("dictionaries/words_alpha.txt")
+	var dictFilePath, puzzleFilePath string
+	flag.StringVar(&dictFilePath, "d", "", "path to the dictionary file")
+	flag.StringVar(&puzzleFilePath, "p", "", "path to the puzzle file")
+
+	flag.Parse()
+
+	if dictFilePath == "" {
+		return fmt.Errorf("provide a dictionary file using the -d switch")
+	}
+	if puzzleFilePath == "" {
+		return fmt.Errorf("provide a puzzle file using -p switch")
+	}
+
+	dict, err := readDictionaryFromFile(dictFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to get dictionary: %v", err)
 	}
 
 	fmt.Printf("The dictionary contains %d words\n", len(dict))
 
-	grid, wordLens, err := readPuzzle(os.Stdin)
+	grid, wordLens, err := readPuzzleFromFile(puzzleFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to read puzzle: %v", err)
 	}
@@ -123,6 +136,11 @@ func solve(grid [][]byte, wordLens []int, dictionary []string) ([][]string, erro
 
 	s.makeInitialCandidates()
 
+	s.wordLenCandidates = make(map[int][]string, len(wordLens))
+	for i, l := range wordLens {
+		s.wordLenCandidates[l] = s.initialCandidates[i]
+	}
+
 	return s.solve()
 }
 
@@ -157,6 +175,8 @@ type solver struct {
 	// The initial candidate words for each word length. Never changes.
 	initialCandidates [][]string
 
+	wordLenCandidates map[int][]string
+
 	// curSol is the solution we are in the progress of building.
 	curSol    []string
 	solutions [][]string
@@ -176,12 +196,15 @@ func (s *solver) findSolutions() {
 		return
 	}
 
-	nextWordIdx := len(s.curSol)
-	cands := s.initialCandidates[nextWordIdx]
+	wordIdx := len(s.curSol)
+	wordLen := s.wordLens[wordIdx]
+	cands := s.wordLenCandidates[wordLen]
 
-	for _, candidate := range cands {
+	for i, candidate := range cands {
 		if s.haveEnoughCharsForWord(candidate) {
+			s.wordLenCandidates[wordLen] = cands[i+1:]
 			s.placeWord(candidate)
+			s.wordLenCandidates[wordLen] = cands
 		}
 	}
 }
@@ -364,13 +387,17 @@ func getWordsOfLen(dict []string, l int) []string {
 	return out
 }
 
-func getDictionary(file string) ([]string, error) {
-	bs, err := os.ReadFile(file)
+func readDictionaryFromFile(file string) ([]string, error) {
+	f, err := os.Open(file)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %v", err)
+		return nil, fmt.Errorf("failed to open dictionary file: %v", err)
 	}
+	defer f.Close()
+	return readDictionary(f)
+}
 
-	sc := bufio.NewScanner(bytes.NewReader(bs))
+func readDictionary(r io.Reader) ([]string, error) {
+	sc := bufio.NewScanner(r)
 
 	dict := make([]string, 0, 1<<20)
 	for sc.Scan() {
@@ -387,10 +414,18 @@ func getDictionary(file string) ([]string, error) {
 	return dict, nil
 }
 
+func readPuzzleFromFile(file string) ([][]byte, []int, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to open puzzle file: %v", err)
+	}
+	defer f.Close()
+	return readPuzzle(f)
+}
+
 func readPuzzle(r io.Reader) ([][]byte, []int, error) {
 	grid := make([][]byte, 0)
 
-	fmt.Println("enter puzzle lines followed by an empty line:")
 	sc := bufio.NewScanner(r)
 	for sc.Scan() {
 		line := sc.Text()
@@ -410,7 +445,6 @@ func readPuzzle(r io.Reader) ([][]byte, []int, error) {
 	}
 
 	wordLens := make([]int, 0)
-	fmt.Println("enter target word lengths, one per line:")
 	for sc.Scan() {
 		line := sc.Text()
 		if line == "" {

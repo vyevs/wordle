@@ -27,7 +27,7 @@ pilbnac
 		b.Fatalf("failed to read puzzle: %v", err)
 	}
 
-	dict, err := getDictionary("dictionaries/words_alpha.txt")
+	dict, err := readDictionaryFromFile("dictionaries/words_alpha.txt")
 	if err != nil {
 		b.Fatalf("failed to get dictionary: %v", err)
 	}

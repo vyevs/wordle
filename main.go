@@ -37,14 +37,10 @@ func main() {
 
 func myMain() error {
 	var dictFilePath, puzzleFilePath string
-	flag.StringVar(&dictFilePath, "d", "", "path to the dictionary file")
+	flag.StringVar(&dictFilePath, "d", "dictionaries/words_alpha.txt", "path to the dictionary file")
 	flag.StringVar(&puzzleFilePath, "p", "", "path to the puzzle file")
-
 	flag.Parse()
 
-	if dictFilePath == "" {
-		return fmt.Errorf("provide a dictionary file using the -d switch")
-	}
 	if puzzleFilePath == "" {
 		return fmt.Errorf("provide a puzzle file using -p switch")
 	}
@@ -63,7 +59,7 @@ func myMain() error {
 
 	fmt.Println("grid:")
 	fmt.Print(gridStr(grid))
-	fmt.Printf("looking for words of lengths %v\n", wordLens)
+	fmt.Printf("looking for %d words of lengths %v\n", len(wordLens), wordLens)
 
 	solutions, err := solve(grid, wordLens, dict)
 	if err != nil {
@@ -82,12 +78,11 @@ func myMain() error {
 	return nil
 }
 
-const N = 7
-
 func checkForDuplicates(solutions [][]string) {
-	uniqSols := make(map[[N]string]struct{})
-	for _, s := range solutions {
-		uniqSols[[N]string(s)] = struct{}{}
+	uniqSols := make(map[string][]string)
+	for _, sol := range solutions {
+		key := strings.Join(sol, "")
+		uniqSols[key] = sol
 	}
 
 	fmt.Printf("%d unique solutions\n", len(uniqSols))

@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"log"
 	"os"
+	"runtime/pprof"
 	"slices"
 	"strconv"
 	"strings"
@@ -12,6 +14,18 @@ import (
 )
 
 func main() {
+	if true {
+		f, err := os.Create("cpu.prof")
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		defer f.Close() // error handling omitted for example
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
+	}
+
 	defer timeIt(time.Now(), "Everything")
 
 	err := myMain()
@@ -146,7 +160,7 @@ type solver struct {
 }
 
 func (s *solver) solve() ([][]string, error) {
-	defer timeIt(time.Now(), "solving")
+	defer timeIt(time.Now(), "Solving")
 
 	s.findSolutions()
 

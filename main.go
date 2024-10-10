@@ -21,7 +21,7 @@ func main() {
 }
 
 func myMain() error {
-	dict, err := getDictionary("words_alpha.txt")
+	dict, err := getDictionary("dictionaries/vlads_dict.txt")
 	if err != nil {
 		return fmt.Errorf("failed to get dictionary: %v", err)
 	}
@@ -114,6 +114,7 @@ type solver struct {
 	availableChars [26]int  // Count of each available alphabetic character 'a' thru 'z'.
 
 	// The locations of each char 'a' through 'z' in the grid. charLocations[char][i] is [2]int{rowIndex, colIndex}.
+	// Never changes.
 	charLocations [26][][2]int
 	// The lengths of the words we're looking for. Never changes.
 	wordLens []int
@@ -334,18 +335,6 @@ func (s *solver) canPlaceWordRec(r, c int, candidate string, charIdx int) bool {
 		s.canPlaceWordRec(r-1, c+1, candidate, nextCharIdx) ||
 		s.canPlaceWordRec(r+1, c-1, candidate, nextCharIdx) ||
 		s.canPlaceWordRec(r+1, c+1, candidate, nextCharIdx)
-}
-
-func allTrue(g [][]bool) bool {
-	for _, r := range g {
-		for _, b := range r {
-			if !b {
-				return false
-			}
-		}
-	}
-
-	return true
 }
 
 func getWordsOfLen(dict []string, l int) []string {

@@ -43,7 +43,7 @@ func myMain() error {
 	}
 
 	fmt.Printf("found %d solutions\n", len(solutions))
-	if true {
+	if false {
 		for i, s := range solutions {
 			fmt.Printf("%3d: %v\n", i+1, s)
 		}

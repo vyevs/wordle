@@ -43,9 +43,9 @@ func myMain() error {
 	}
 
 	fmt.Printf("found %d solutions\n", len(solutions))
-	if false {
-		for _, s := range solutions {
-			fmt.Printf("%v\n", s)
+	if true {
+		for i, s := range solutions {
+			fmt.Printf("%3d: %v\n", i+1, s)
 		}
 	}
 
@@ -55,15 +55,17 @@ func myMain() error {
 }
 
 func checkForDuplicates(solutions [][]string) {
-	uniqSols := make(map[[6]string]struct{})
+	uniqSols := make(map[[3]string]struct{})
 	for _, s := range solutions {
-		uniqSols[[6]string(s)] = struct{}{}
+		uniqSols[[3]string(s)] = struct{}{}
 	}
 
 	fmt.Printf("%d unique solutions\n", len(uniqSols))
 	if false {
+		var i int
 		for sol := range uniqSols {
-			fmt.Println(sol)
+			fmt.Printf("%3d: %v\n", i+1, sol)
+			i++
 		}
 	}
 }
@@ -118,6 +120,8 @@ type solver struct {
 	// The initial candidate words for each word length. Never changes.
 	initialCandidates [][]string
 
+	candidateIndexToStartAt map[int]int
+
 	// curSol is the solution we are in the progress of building.
 	curSol    []string
 	solutions [][]string
@@ -145,6 +149,10 @@ func (s *solver) solve() ([][]string, error) {
 	s.solutions = make([][]string, 0, 1024)
 
 	s.makeInitialCandidates()
+	s.candidateIndexToStartAt = make(map[int]int, len(s.wordLens))
+	for _, l := range s.wordLens {
+		s.candidateIndexToStartAt[l] = 0 // For each unique word length, start index 0.
+	}
 
 	s.solveIt()
 

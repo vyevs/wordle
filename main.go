@@ -169,13 +169,13 @@ type solution struct {
 }
 
 func (s solution) clone() solution {
-	cells := make([][][2]int, 0, len(s.cells))
+	/*cells := make([][][2]int, 0, len(s.cells))
 	for _, cell := range s.cells {
 		cells = append(cells, slices.Clone(cell))
-	}
+	}*/
 	return solution{
 		words: slices.Clone(s.words),
-		cells: cells,
+		cells: slices.Clone(s.cells),
 	}
 }
 
@@ -252,8 +252,10 @@ func (s *solver) findSolutions() {
 func (s *solver) placeWord(word string) {
 	firstChar := word[0]
 	firstCharLocs := s.charLocations[firstChar-'a']
+
+	pathSlice := make([][2]int, 0, 32)
 	for _, loc := range firstCharLocs {
-		s.placeWordRec(loc[0], loc[1], word, 0, nil)
+		s.placeWordRec(loc[0], loc[1], word, 0, pathSlice)
 	}
 }
 
@@ -287,7 +289,7 @@ func (s *solver) placeWordRec(r, c int, candidate string, charIdx int, path [][2
 
 	if charIdx == len(candidate)-1 {
 		s.curSol.words = append(s.curSol.words, candidate)
-		s.curSol.cells = append(s.curSol.cells, path)
+		s.curSol.cells = append(s.curSol.cells, slices.Clone(path))
 
 		s.findSolutions()
 

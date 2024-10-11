@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	if false {
+	if true {
 		f, err := os.Create("cpu.prof")
 		if err != nil {
 			log.Fatal("could not create CPU profile: ", err)
@@ -82,7 +82,7 @@ func myMain() error {
 	return nil
 }
 
-func solve(grid [][]byte, wordLens []int, dictionary []string) ([]solution, error) {
+func solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, error) {
 	if err := validateInput(grid, wordLens); err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func solve(grid [][]byte, wordLens []int, dictionary []string) ([]solution, erro
 
 	s.makeInitialCandidates()
 
-	s.wordLenCandidates = make(map[int][]string, len(wordLens))
+	s.wordLenCandidates = make(map[byte][]string, len(wordLens))
 	for i, l := range wordLens {
 		s.wordLenCandidates[l] = s.initialCandidates[i]
 	}
@@ -125,11 +125,11 @@ func solve(grid [][]byte, wordLens []int, dictionary []string) ([]solution, erro
 	return s.solve()
 }
 
-func validateInput(grid [][]byte, wordLens []int) error {
+func validateInput(grid [][]byte, wordLens []byte) error {
 	gridSz := numItems(grid)
 	var wordLensSum int
 	for _, l := range wordLens {
-		wordLensSum += l
+		wordLensSum += int(l)
 	}
 	if wordLensSum < gridSz {
 		return fmt.Errorf("the word lengths provided (sum %d) will not use all %d grid characters", wordLensSum, gridSz)
@@ -152,11 +152,11 @@ type solver struct {
 	// Never changes.
 	charLocations [26][][2]byte
 	// The lengths of the words we're looking for. Never changes.
-	wordLens []int
+	wordLens []byte
 	// The initial candidate words for each word length. Never changes.
 	initialCandidates [][]string
 
-	wordLenCandidates map[int][]string
+	wordLenCandidates map[byte][]string
 
 	// curSol is the solution we are in the progress of building.
 	curSol    solution
@@ -253,22 +253,13 @@ func (s *solver) placeWord(word string) {
 	firstChar := word[0]
 	firstCharLocs := s.charLocations[firstChar-'a']
 
-	pathSlice := make([][2]byte, 0, 16)
+	var path [16][2]byte
 	for _, loc := range firstCharLocs {
-		s.placeWordRec(loc[0], loc[1], word, 0, pathSlice)
+		s.placeWordRec(loc[0], loc[1], word, 0, path[:0])
 	}
 }
 
 func (s *solver) placeWordRec(r, c byte, candidate string, charIdx int, path [][2]byte) {
-	// If row is out of bounds, we can't solve the puzzle in this direction.
-	if r >= byte(len(s.grid)) {
-		return
-	}
-	// If col is out of bounds, we can't solve the puzzle going in this direction.
-	if c >= byte(len(s.grid[r])) {
-		return
-	}
-
 	if s.used[r][c] {
 		return
 	}
@@ -300,14 +291,45 @@ func (s *solver) placeWordRec(r, c byte, candidate string, charIdx int, path [][
 	}
 
 	nextCharIdx := charIdx + 1
-	s.placeWordRec(r-1, c, candidate, nextCharIdx, path)
-	s.placeWordRec(r+1, c, candidate, nextCharIdx, path)
-	s.placeWordRec(r, c-1, candidate, nextCharIdx, path)
-	s.placeWordRec(r, c+1, candidate, nextCharIdx, path)
-	s.placeWordRec(r-1, c-1, candidate, nextCharIdx, path)
-	s.placeWordRec(r-1, c+1, candidate, nextCharIdx, path)
-	s.placeWordRec(r+1, c-1, candidate, nextCharIdx, path)
-	s.placeWordRec(r+1, c+1, candidate, nextCharIdx, path)
+
+	// If we can move up.
+	if r > 0 {
+		s.placeWordRec(r-1, c, candidate, nextCharIdx, path)
+
+		// If we can move left and up.
+		if c > 0 {
+			s.placeWordRec(r-1, c-1, candidate, nextCharIdx, path)
+		}
+		// If we can move right and up.
+		if c < byte(len(s.grid[r])-1) {
+			s.placeWordRec(r-1, c+1, candidate, nextCharIdx, path)
+		}
+	}
+
+	// If we can move down.
+	if r < byte(len(s.grid))-1 {
+		s.placeWordRec(r+1, c, candidate, nextCharIdx, path)
+
+		// If we can move left and down.
+		if c > 0 {
+			s.placeWordRec(r+1, c-1, candidate, nextCharIdx, path)
+		}
+
+		// If we can move right and down.
+		if c < byte(len(s.grid[r])-1) {
+			s.placeWordRec(r+1, c+1, candidate, nextCharIdx, path)
+		}
+	}
+
+	// If we can move left.
+	if c > 0 {
+		s.placeWordRec(r, c-1, candidate, nextCharIdx, path)
+	}
+
+	// If we can move right.
+	if c < byte(len(s.grid[r])-1) {
+		s.placeWordRec(r, c+1, candidate, nextCharIdx, path)
+	}
 }
 
 func (s *solver) makeInitialCandidates() {
@@ -429,10 +451,10 @@ func (s *solver) canPlaceWordRec(r, c byte, candidate string, charIdx int) bool 
 		s.canPlaceWordRec(r+1, c+1, candidate, nextCharIdx)
 }
 
-func getWordsOfLen(dict []string, l int) []string {
-	out := make([]string, 0, 1024)
+func getWordsOfLen(dict []string, l byte) []string {
+	out := make([]string, 0, 1024*16)
 	for _, w := range dict {
-		if len(w) == l {
+		if l == byte(len(w)) {
 			out = append(out, w)
 		}
 	}
@@ -451,7 +473,7 @@ func readDictionaryFromFile(file string) ([]string, error) {
 func readDictionary(r io.Reader) ([]string, error) {
 	sc := bufio.NewScanner(r)
 
-	dict := make([]string, 0, 1<<20)
+	dict := make([]string, 0, 1<<19)
 	for sc.Scan() {
 		line := sc.Text()
 		line = strings.TrimSpace(line)
@@ -466,7 +488,7 @@ func readDictionary(r io.Reader) ([]string, error) {
 	return dict, nil
 }
 
-func readPuzzleFromFile(file string) ([][]byte, []int, error) {
+func readPuzzleFromFile(file string) ([][]byte, []byte, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open puzzle file: %v", err)
@@ -475,7 +497,7 @@ func readPuzzleFromFile(file string) ([][]byte, []int, error) {
 	return readPuzzle(f)
 }
 
-func readPuzzle(r io.Reader) ([][]byte, []int, error) {
+func readPuzzle(r io.Reader) ([][]byte, []byte, error) {
 	grid := make([][]byte, 0)
 
 	sc := bufio.NewScanner(r)
@@ -496,7 +518,7 @@ func readPuzzle(r io.Reader) ([][]byte, []int, error) {
 		return nil, nil, fmt.Errorf("error reading grid: %v", err)
 	}
 
-	wordLens := make([]int, 0)
+	wordLens := make([]byte, 0)
 	for sc.Scan() {
 		line := sc.Text()
 		if line == "" {
@@ -507,7 +529,7 @@ func readPuzzle(r io.Reader) ([][]byte, []int, error) {
 		if err != nil {
 			return nil, nil, fmt.Errorf("invalid word length %q: %v", line, err)
 		}
-		wordLens = append(wordLens, wordLen)
+		wordLens = append(wordLens, byte(wordLen))
 	}
 	if err := sc.Err(); err != nil {
 		return nil, nil, fmt.Errorf("error reading word lengths: %v", err)

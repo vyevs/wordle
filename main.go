@@ -79,16 +79,6 @@ func myMain() error {
 		}
 	}
 
-	{
-		for i, sol := range solutions {
-			for j, word := range sol.words {
-				if len(word) != len(sol.locs[j]) {
-					fmt.Printf("invalid solution number %d\n", i)
-				}
-			}
-		}
-	}
-
 	return nil
 }
 
@@ -175,13 +165,17 @@ type solver struct {
 
 type solution struct {
 	words []string
-	locs  [][][2]int
+	cells [][][2]int
 }
 
 func (s solution) clone() solution {
+	cells := make([][][2]int, 0, len(s.cells))
+	for _, cell := range s.cells {
+		cells = append(cells, slices.Clone(cell))
+	}
 	return solution{
 		words: slices.Clone(s.words),
-		locs:  slices.Clone(s.locs),
+		cells: cells,
 	}
 }
 
@@ -189,7 +183,7 @@ func (s solution) String(grid [][]byte) string {
 	var b strings.Builder
 	b.Grow(128)
 
-	colors := [8]string{"red", "light gray", "green", "yellow", "cyan", "orange", "pink", "purple"}
+	colors := [9]string{"red", "light gray", "green", "yellow", "cyan", "orange", "pink", "purple", "chartreuse"}
 
 	// Write colorful words.
 	{
@@ -204,18 +198,18 @@ func (s solution) String(grid [][]byte) string {
 		b.WriteByte('\n')
 	}
 
-	locToColor := make(map[[2]int]string, len(s.words))
-	for i, wordLocs := range s.locs {
-		for _, loc := range wordLocs {
-			colorForLoc := colors[i]
-			locToColor[loc] = colorForLoc
+	cellToColor := make(map[[2]int]string, len(s.words))
+	for i, wordCells := range s.cells {
+		cellColor := colors[i]
+		for _, cell := range wordCells {
+			cellToColor[cell] = cellColor
 		}
 	}
 
 	for r, row := range grid {
 		for c, char := range row {
-			loc := [2]int{r, c}
-			color := locToColor[loc]
+			cell := [2]int{r, c}
+			color := cellToColor[cell]
 
 			b.WriteString(ansi.FGColorName(color))
 			b.WriteByte(char)
@@ -282,22 +276,26 @@ func (s *solver) placeWordRec(r, c int, candidate string, charIdx int, path [][2
 		return
 	}
 
+	s.used[r][c] = true
+	s.availableChars[char-'a']--
+	defer func() {
+		s.used[r][c] = false
+		s.availableChars[char-'a']++
+	}()
+
 	path = append(path, [2]int{r, c})
 
 	if charIdx == len(candidate)-1 {
 		s.curSol.words = append(s.curSol.words, candidate)
-		s.curSol.locs = append(s.curSol.locs, path)
+		s.curSol.cells = append(s.curSol.cells, path)
 
 		s.findSolutions()
 
 		s.curSol.words = s.curSol.words[:len(s.curSol.words)-1]
-		s.curSol.locs = s.curSol.locs[:len(s.curSol.locs)-1]
+		s.curSol.cells = s.curSol.cells[:len(s.curSol.cells)-1]
 
 		return
 	}
-
-	s.used[r][c] = true
-	s.availableChars[char-'a']--
 
 	nextCharIdx := charIdx + 1
 	s.placeWordRec(r-1, c, candidate, nextCharIdx, path)
@@ -309,8 +307,6 @@ func (s *solver) placeWordRec(r, c int, candidate string, charIdx int, path [][2
 	s.placeWordRec(r+1, c-1, candidate, nextCharIdx, path)
 	s.placeWordRec(r+1, c+1, candidate, nextCharIdx, path)
 
-	s.used[r][c] = false
-	s.availableChars[char-'a']++
 }
 
 func (s *solver) makeInitialCandidates() {
@@ -408,13 +404,19 @@ func (s *solver) canPlaceWordRec(r, c int, candidate string, charIdx int) bool {
 		return false
 	}
 
-	if candidate[charIdx] != s.grid[r][c] {
+	char := candidate[charIdx]
+	if char != s.grid[r][c] {
 		return false
 	}
 
 	if charIdx == len(candidate)-1 {
 		return true
 	}
+
+	s.used[r][c] = true
+	defer func() {
+		s.used[r][c] = false
+	}()
 
 	nextCharIdx := charIdx + 1
 	return s.canPlaceWordRec(r-1, c, candidate, nextCharIdx) ||

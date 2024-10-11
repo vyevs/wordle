@@ -109,7 +109,7 @@ func solve(grid [][]byte, wordLens []int, dictionary []string) ([]solution, erro
 
 	for r, row := range s.grid {
 		for c, char := range row {
-			loc := [2]int{r, c}
+			loc := [2]byte{byte(r), byte(c)}
 
 			s.charLocations[char-'a'] = append(s.charLocations[char-'a'], loc)
 		}
@@ -146,11 +146,11 @@ type solver struct {
 
 	grid           [][]byte // Character grid from which to make words.
 	used           [][]bool // Whether we've used a specific grid position.
-	availableChars [26]int  // Count of each available alphabetic character 'a' thru 'z'.
+	availableChars [26]byte // Count of each available alphabetic character 'a' thru 'z'.
 
 	// The locations of each char 'a' through 'z' in the grid. charLocations[char][i] is [2]int{rowIndex, colIndex}.
 	// Never changes.
-	charLocations [26][][2]int
+	charLocations [26][][2]byte
 	// The lengths of the words we're looking for. Never changes.
 	wordLens []int
 	// The initial candidate words for each word length. Never changes.
@@ -165,7 +165,7 @@ type solver struct {
 
 type solution struct {
 	words []string
-	cells [][][2]int
+	cells [][][2]byte
 }
 
 func (s solution) clone() solution {
@@ -198,7 +198,7 @@ func (s solution) String(grid [][]byte) string {
 		b.WriteByte('\n')
 	}
 
-	cellToColor := make(map[[2]int]string, len(s.words))
+	cellToColor := make(map[[2]byte]string, len(s.words))
 	for i, wordCells := range s.cells {
 		cellColor := colors[i]
 		for _, cell := range wordCells {
@@ -208,7 +208,7 @@ func (s solution) String(grid [][]byte) string {
 
 	for r, row := range grid {
 		for c, char := range row {
-			cell := [2]int{r, c}
+			cell := [2]byte{byte(r), byte(c)}
 			color := cellToColor[cell]
 
 			b.WriteString(ansi.FGColorName(color))
@@ -253,19 +253,19 @@ func (s *solver) placeWord(word string) {
 	firstChar := word[0]
 	firstCharLocs := s.charLocations[firstChar-'a']
 
-	pathSlice := make([][2]int, 0, 32)
+	pathSlice := make([][2]byte, 0, 16)
 	for _, loc := range firstCharLocs {
 		s.placeWordRec(loc[0], loc[1], word, 0, pathSlice)
 	}
 }
 
-func (s *solver) placeWordRec(r, c int, candidate string, charIdx int, path [][2]int) {
+func (s *solver) placeWordRec(r, c byte, candidate string, charIdx int, path [][2]byte) {
 	// If row is out of bounds, we can't solve the puzzle in this direction.
-	if r < 0 || r >= len(s.grid) {
+	if r >= byte(len(s.grid)) {
 		return
 	}
 	// If col is out of bounds, we can't solve the puzzle going in this direction.
-	if c < 0 || c >= len(s.grid[r]) {
+	if c >= byte(len(s.grid[r])) {
 		return
 	}
 
@@ -285,7 +285,7 @@ func (s *solver) placeWordRec(r, c int, candidate string, charIdx int, path [][2
 		s.availableChars[char-'a']++
 	}()
 
-	path = append(path, [2]int{r, c})
+	path = append(path, [2]byte{r, c})
 
 	if charIdx == len(candidate)-1 {
 		s.curSol.words = append(s.curSol.words, candidate)
@@ -363,7 +363,7 @@ func (s *solver) pruneCandidatesByPlacement(cands []string) []string {
 }
 
 func (s *solver) haveEnoughCharsForWord(w string) bool {
-	var wCts [26]int
+	var wCts [26]byte
 	for _, c := range w {
 		wCts[c-'a']++
 	}
@@ -390,13 +390,13 @@ func (s *solver) canPlaceWordOnGrid(word string) bool {
 	return false
 }
 
-func (s *solver) canPlaceWordRec(r, c int, candidate string, charIdx int) bool {
+func (s *solver) canPlaceWordRec(r, c byte, candidate string, charIdx int) bool {
 	// If row is out of bounds, we can't place a char in this direction.
-	if r < 0 || r >= len(s.grid) {
+	if r >= byte(len(s.grid)) {
 		return false
 	}
 	// If col is out of bounds, we can't place a char in this direction.
-	if c < 0 || c >= len(s.grid[r]) {
+	if c >= byte(len(s.grid[r])) {
 		return false
 	}
 

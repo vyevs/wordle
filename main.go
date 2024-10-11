@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/vyevs/ansi"
 )
 
 func main() {
@@ -73,33 +75,24 @@ func myMain() error {
 	fmt.Printf("found %d solutions\n", len(solutions))
 	if verbose {
 		for i, s := range solutions {
-			fmt.Printf("%3d: %v\n", i+1, s)
+			fmt.Printf("%3d\n%v\n", i+1, s.String(grid))
 		}
 	}
 
-	checkForDuplicates(solutions, verbose)
+	{
+		for i, sol := range solutions {
+			for j, word := range sol.words {
+				if len(word) != len(sol.locs[j]) {
+					fmt.Printf("invalid solution number %d\n", i)
+				}
+			}
+		}
+	}
 
 	return nil
 }
 
-func checkForDuplicates(solutions [][]string, verbose bool) {
-	uniqSols := make(map[string][]string)
-	for _, sol := range solutions {
-		key := strings.Join(sol, "")
-		uniqSols[key] = sol
-	}
-
-	fmt.Printf("%d unique solutions\n", len(uniqSols))
-	if verbose {
-		var i int
-		for _, sol := range uniqSols {
-			fmt.Printf("%3d: %v\n", i+1, sol)
-			i++
-		}
-	}
-}
-
-func solve(grid [][]byte, wordLens []int, dictionary []string) ([][]string, error) {
+func solve(grid [][]byte, wordLens []int, dictionary []string) ([]solution, error) {
 	if err := validateInput(grid, wordLens); err != nil {
 		return nil, err
 	}
@@ -115,8 +108,7 @@ func solve(grid [][]byte, wordLens []int, dictionary []string) ([][]string, erro
 		used:     makeBoolGrid(grid),
 		wordLens: wordLens,
 
-		curSol:    make([]string, 0, len(wordLens)),
-		solutions: make([][]string, 0, 1024),
+		solutions: make([]solution, 0, 1024),
 	}
 
 	for _, row := range s.grid {
@@ -177,11 +169,66 @@ type solver struct {
 	wordLenCandidates map[int][]string
 
 	// curSol is the solution we are in the progress of building.
-	curSol    []string
-	solutions [][]string
+	curSol    solution
+	solutions []solution
 }
 
-func (s *solver) solve() ([][]string, error) {
+type solution struct {
+	words []string
+	locs  [][][2]int
+}
+
+func (s solution) clone() solution {
+	return solution{
+		words: slices.Clone(s.words),
+		locs:  slices.Clone(s.locs),
+	}
+}
+
+func (s solution) String(grid [][]byte) string {
+	var b strings.Builder
+	b.Grow(128)
+
+	colors := [8]string{"red", "light gray", "green", "yellow", "cyan", "orange", "pink", "purple"}
+
+	// Write colorful words.
+	{
+		for i, word := range s.words {
+			colorForWord := colors[i]
+
+			b.WriteString(ansi.FGColorName(colorForWord))
+			b.WriteString(word)
+			b.WriteByte(' ')
+		}
+
+		b.WriteByte('\n')
+	}
+
+	locToColor := make(map[[2]int]string, len(s.words))
+	for i, wordLocs := range s.locs {
+		for _, loc := range wordLocs {
+			colorForLoc := colors[i]
+			locToColor[loc] = colorForLoc
+		}
+	}
+
+	for r, row := range grid {
+		for c, char := range row {
+			loc := [2]int{r, c}
+			color := locToColor[loc]
+
+			b.WriteString(ansi.FGColorName(color))
+			b.WriteByte(char)
+		}
+		b.WriteByte('\n')
+	}
+
+	b.WriteString(ansi.Clear)
+
+	return b.String()
+}
+
+func (s *solver) solve() ([]solution, error) {
 	defer timeIt(time.Now(), "Solving")
 
 	s.findSolutions()
@@ -190,12 +237,12 @@ func (s *solver) solve() ([][]string, error) {
 }
 
 func (s *solver) findSolutions() {
-	if len(s.curSol) >= len(s.wordLens) {
-		s.solutions = append(s.solutions, slices.Clone(s.curSol))
+	if len(s.curSol.words) >= len(s.wordLens) {
+		s.solutions = append(s.solutions, s.curSol.clone())
 		return
 	}
 
-	wordIdx := len(s.curSol)
+	wordIdx := len(s.curSol.words)
 	wordLen := s.wordLens[wordIdx]
 	cands := s.wordLenCandidates[wordLen]
 
@@ -212,11 +259,11 @@ func (s *solver) placeWord(word string) {
 	firstChar := word[0]
 	firstCharLocs := s.charLocations[firstChar-'a']
 	for _, loc := range firstCharLocs {
-		s.placeWordRec(loc[0], loc[1], word, 0)
+		s.placeWordRec(loc[0], loc[1], word, 0, [][2]int{})
 	}
 }
 
-func (s *solver) placeWordRec(r, c int, candidate string, charIdx int) {
+func (s *solver) placeWordRec(r, c int, candidate string, charIdx int, path [][2]int) {
 	// If row is out of bounds, we can't solve the puzzle in this direction.
 	if r < 0 || r >= len(s.grid) {
 		return
@@ -231,16 +278,20 @@ func (s *solver) placeWordRec(r, c int, candidate string, charIdx int) {
 	}
 
 	char := candidate[charIdx]
-	if candidate[charIdx] != s.grid[r][c] {
+	if char != s.grid[r][c] {
 		return
 	}
 
+	path = append(path, [2]int{r, c})
+
 	if charIdx == len(candidate)-1 {
-		s.curSol = append(s.curSol, candidate)
+		s.curSol.words = append(s.curSol.words, candidate)
+		s.curSol.locs = append(s.curSol.locs, path)
 
 		s.findSolutions()
 
-		s.curSol = s.curSol[:len(s.curSol)-1]
+		s.curSol.words = s.curSol.words[:len(s.curSol.words)-1]
+		s.curSol.locs = s.curSol.locs[:len(s.curSol.locs)-1]
 
 		return
 	}
@@ -249,14 +300,14 @@ func (s *solver) placeWordRec(r, c int, candidate string, charIdx int) {
 	s.availableChars[char-'a']--
 
 	nextCharIdx := charIdx + 1
-	s.placeWordRec(r-1, c, candidate, nextCharIdx)
-	s.placeWordRec(r+1, c, candidate, nextCharIdx)
-	s.placeWordRec(r, c-1, candidate, nextCharIdx)
-	s.placeWordRec(r, c+1, candidate, nextCharIdx)
-	s.placeWordRec(r-1, c-1, candidate, nextCharIdx)
-	s.placeWordRec(r-1, c+1, candidate, nextCharIdx)
-	s.placeWordRec(r+1, c-1, candidate, nextCharIdx)
-	s.placeWordRec(r+1, c+1, candidate, nextCharIdx)
+	s.placeWordRec(r-1, c, candidate, nextCharIdx, path)
+	s.placeWordRec(r+1, c, candidate, nextCharIdx, path)
+	s.placeWordRec(r, c-1, candidate, nextCharIdx, path)
+	s.placeWordRec(r, c+1, candidate, nextCharIdx, path)
+	s.placeWordRec(r-1, c-1, candidate, nextCharIdx, path)
+	s.placeWordRec(r-1, c+1, candidate, nextCharIdx, path)
+	s.placeWordRec(r+1, c-1, candidate, nextCharIdx, path)
+	s.placeWordRec(r+1, c+1, candidate, nextCharIdx, path)
 
 	s.used[r][c] = false
 	s.availableChars[char-'a']++

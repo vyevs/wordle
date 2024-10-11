@@ -253,7 +253,7 @@ func (s *solver) placeWord(word string) {
 	firstChar := word[0]
 	firstCharLocs := s.charLocations[firstChar-'a']
 	for _, loc := range firstCharLocs {
-		s.placeWordRec(loc[0], loc[1], word, 0, [][2]int{})
+		s.placeWordRec(loc[0], loc[1], word, 0, nil)
 	}
 }
 
@@ -306,7 +306,6 @@ func (s *solver) placeWordRec(r, c int, candidate string, charIdx int, path [][2
 	s.placeWordRec(r-1, c+1, candidate, nextCharIdx, path)
 	s.placeWordRec(r+1, c-1, candidate, nextCharIdx, path)
 	s.placeWordRec(r+1, c+1, candidate, nextCharIdx, path)
-
 }
 
 func (s *solver) makeInitialCandidates() {
@@ -384,7 +383,6 @@ func (s *solver) canPlaceWordOnGrid(word string) bool {
 		if s.canPlaceWordRec(loc[0], loc[1], word, 0) {
 			return true
 		}
-
 	}
 
 	return false

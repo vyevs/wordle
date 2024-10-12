@@ -1,4 +1,4 @@
-module github.com/vyevs/wordle3
+module github.com/vyevs/wordle
 
 go 1.23.0
 

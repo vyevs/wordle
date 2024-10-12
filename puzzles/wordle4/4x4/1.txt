@@ -1,0 +1,9 @@
+emcu
+sper
+sagp
+awin
+
+4
+4
+4
+4

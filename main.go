@@ -125,7 +125,15 @@ func solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, err
 	initialCandidates := s.makeInitialCandidates(dictionary)
 
 	for i, cands := range initialCandidates {
-		fmt.Printf("word length %d has %d candidates\n", wordLens[i], len(cands))
+		fmt.Printf("word length %d has %d candidates", wordLens[i], len(cands))
+		if len(cands) < 10 {
+			fmt.Print(": [")
+			for _, c := range cands {
+				fmt.Print(c.str, " ")
+			}
+			fmt.Print("]")
+		}
+		fmt.Println()
 	}
 
 	s.wordLenCandidates = make(map[byte][]word, len(wordLens))

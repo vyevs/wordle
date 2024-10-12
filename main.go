@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -82,6 +83,8 @@ func myMain() error {
 	return nil
 }
 
+const emptyCellChar = '.'
+
 func solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, error) {
 	if err := validateInput(grid, wordLens); err != nil {
 		return nil, err
@@ -93,7 +96,7 @@ func solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, err
 
 	s := solver{
 		grid:     grid,
-		used:     makeBoolGrid(grid),
+		used:     makeInitialUsedGrid(grid),
 		wordLens: wordLens,
 
 		solutions: make([]solution, 0, 1024),
@@ -101,12 +104,18 @@ func solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, err
 
 	for _, row := range s.grid {
 		for _, c := range row {
-			s.availableChars[c-'a']++
+			if c != emptyCellChar {
+				s.availableChars[c-'a']++
+			}
 		}
 	}
 
 	for r, row := range s.grid {
 		for c, char := range row {
+			if char == emptyCellChar {
+				continue
+			}
+
 			loc := [2]byte{byte(r), byte(c)}
 
 			s.charLocations[char-'a'] = append(s.charLocations[char-'a'], loc)
@@ -128,7 +137,7 @@ func solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, err
 }
 
 func validateInput(grid [][]byte, wordLens []byte) error {
-	gridSz := numItems(grid)
+	gridSz := countAlphaChars(grid)
 	var wordLensSum int
 	for _, l := range wordLens {
 		wordLensSum += int(l)
@@ -212,6 +221,7 @@ func (s solution) String(grid [][]byte) string {
 			color := cellToColor[cell]
 
 			b.WriteString(ansi.FGColorName(color))
+
 			b.WriteByte(char)
 		}
 		b.WriteByte('\n')
@@ -483,12 +493,11 @@ func getWordsOfLen(dict []string, l byte) []string {
 }
 
 func readDictionaryFromFile(file string) ([]string, error) {
-	f, err := os.Open(file)
+	bs, err := os.ReadFile(file)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open dictionary file: %v", err)
+		return nil, fmt.Errorf("failed to read file: %v", err)
 	}
-	defer f.Close()
-	return readDictionary(f)
+	return readDictionary(bytes.NewReader(bs))
 }
 
 func readDictionary(r io.Reader) ([]string, error) {
@@ -510,12 +519,11 @@ func readDictionary(r io.Reader) ([]string, error) {
 }
 
 func readPuzzleFromFile(file string) ([][]byte, []byte, error) {
-	f, err := os.Open(file)
+	bs, err := os.ReadFile(file)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to open puzzle file: %v", err)
+		return nil, nil, fmt.Errorf("failed to read file: %v", err)
 	}
-	defer f.Close()
-	return readPuzzle(f)
+	return readPuzzle(bytes.NewReader(bs))
 }
 
 func readPuzzle(r io.Reader) ([][]byte, []byte, error) {
@@ -559,18 +567,26 @@ func readPuzzle(r io.Reader) ([][]byte, []byte, error) {
 	return grid, wordLens, nil
 }
 
-func numItems(s [][]byte) int {
+func countAlphaChars(s [][]byte) int {
 	var ct int
 	for _, r := range s {
-		ct += len(r)
+		for _, c := range r {
+			if c >= 'a' && c <= 'z' {
+				ct++
+			}
+		}
 	}
 	return ct
 }
 
-func makeBoolGrid(g [][]byte) [][]bool {
+func makeInitialUsedGrid(g [][]byte) [][]bool {
 	out := make([][]bool, 0, len(g))
-	for _, r := range g {
-		out = append(out, make([]bool, len(r)))
+	for _, row := range g {
+		outRow := make([]bool, 0, len(row))
+		for _, char := range row {
+			outRow = append(outRow, char == emptyCellChar)
+		}
+		out = append(out, outRow)
 	}
 	return out
 }

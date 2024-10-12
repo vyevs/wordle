@@ -115,11 +115,15 @@ func solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, err
 		}
 	}
 
-	s.makeInitialCandidates()
+	initialCandidates := s.makeInitialCandidates()
+
+	for i, cands := range initialCandidates {
+		fmt.Printf("word length %d has %d candidates\n", wordLens[i], len(cands))
+	}
 
 	s.wordLenCandidates = make(map[byte][]string, len(wordLens))
 	for i, l := range wordLens {
-		s.wordLenCandidates[l] = s.initialCandidates[i]
+		s.wordLenCandidates[l] = initialCandidates[i]
 	}
 
 	return s.solve()
@@ -153,9 +157,9 @@ type solver struct {
 	charLocations [26][][2]byte
 	// The lengths of the words we're looking for. Never changes.
 	wordLens []byte
-	// The initial candidate words for each word length. Never changes.
-	initialCandidates [][]string
 
+	// wordLenCandidates maps from the word length that we are looking for to it's current list of candidates.
+	// The lists get pruned as we descend into the search so that we aren't looking at duplicate same-letter words.
 	wordLenCandidates map[byte][]string
 
 	// curSol is the solution we are in the progress of building.
@@ -169,10 +173,6 @@ type solution struct {
 }
 
 func (s solution) clone() solution {
-	/*cells := make([][][2]int, 0, len(s.cells))
-	for _, cell := range s.cells {
-		cells = append(cells, slices.Clone(cell))
-	}*/
 	return solution{
 		words: slices.Clone(s.words),
 		cells: slices.Clone(s.cells),
@@ -332,30 +332,28 @@ func (s *solver) placeWordRec(r, c byte, candidate string, charIdx int, path [][
 	}
 }
 
-func (s *solver) makeInitialCandidates() {
-	s.initialCandidates = make([][]string, 0, len(s.wordLens))
+func (s *solver) makeInitialCandidates() [][]string {
+	initialCandidates := make([][]string, 0, len(s.wordLens))
 	// Initial candidates are all the words with the same len as the words we've looking for.
 	for _, l := range s.wordLens {
-		s.initialCandidates = append(s.initialCandidates, getWordsOfLen(s.dict, l))
+		initialCandidates = append(initialCandidates, getWordsOfLen(s.dict, l))
 	}
 
 	// Prune candidates to words for which we have the correct character counts.
 	{
-		for i, cands := range s.initialCandidates {
-			s.initialCandidates[i] = s.pruneCandidatesByCharCounts(cands)
+		for i, cands := range initialCandidates {
+			initialCandidates[i] = s.pruneCandidatesByCharCounts(cands)
 		}
 	}
 
 	// Prune candidates to words that can be formed contiguously on the grid.
 	{
-		for i, cands := range s.initialCandidates {
-			s.initialCandidates[i] = s.pruneCandidatesByPlacement(cands)
+		for i, cands := range initialCandidates {
+			initialCandidates[i] = s.pruneCandidatesByPlacement(cands)
 		}
 	}
 
-	for i, l := range s.wordLens {
-		fmt.Printf("word %d of len %d has %d candidates\n", i, l, len(s.initialCandidates[i]))
-	}
+	return initialCandidates
 }
 
 // pruneCandidatesByCharCounts returns a new slice of candidate strings after

@@ -1,28 +1,11 @@
 package main
 
 import (
-	"strings"
 	"testing"
 )
 
 func BenchmarkSolve(b *testing.B) {
-	const puzzleStr = `appiulv
-lposlul
-eopueov
-lytrtnc
-gacsteo
-duouune
-pilbnac
-
-9
-6
-4
-11
-5
-5
-9`
-
-	grid, wordLens, err := readPuzzle(strings.NewReader(puzzleStr))
+	grid, wordLens, err := readPuzzleFromFile("puzzles/flowers3.txt")
 	if err != nil {
 		b.Fatalf("failed to read puzzle: %v", err)
 	}

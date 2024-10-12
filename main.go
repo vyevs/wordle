@@ -119,7 +119,7 @@ func solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, err
 		fmt.Printf("word length %d has %d candidates\n", wordLens[i], len(cands))
 	}
 
-	s.wordLenCandidates = make(map[byte][]string, len(wordLens))
+	s.wordLenCandidates = make(map[byte][]word, len(wordLens))
 	for i, l := range wordLens {
 		s.wordLenCandidates[l] = initialCandidates[i]
 	}
@@ -156,11 +156,16 @@ type solver struct {
 
 	// wordLenCandidates maps from the word length that we are looking for to it's current list of candidates.
 	// The lists get pruned as we descend into the search so that we aren't looking at duplicate same-letter words.
-	wordLenCandidates map[byte][]string
+	wordLenCandidates map[byte][]word
 
 	// curSol is the solution we are in the progress of building.
 	curSol    solution
 	solutions []solution
+}
+
+type word struct {
+	str     string
+	charCts [26]byte
 }
 
 type solution struct {
@@ -236,9 +241,9 @@ func (s *solver) findSolutions() {
 	cands := s.wordLenCandidates[wordLen]
 
 	for i, candidate := range cands {
-		if s.haveEnoughCharsForWord(candidate) {
+		if s.haveEnoughCharsForWord(candidate.charCts) {
 			s.wordLenCandidates[wordLen] = cands[i+1:]
-			s.placeWord(candidate)
+			s.placeWord(candidate.str)
 			s.wordLenCandidates[wordLen] = cands
 		}
 	}
@@ -333,37 +338,51 @@ func (s *solver) placeWordRec(r, c byte, candidate string, charIdx int, path [][
 	}
 }
 
-func (s *solver) makeInitialCandidates(dict []string) [][]string {
+func (s *solver) makeInitialCandidates(dict []string) [][]word {
 	initialCandidates := make([][]string, 0, len(s.wordLens))
 	// Initial candidates are all the words with the same len as the words we've looking for.
 	for _, l := range s.wordLens {
 		initialCandidates = append(initialCandidates, getWordsOfLen(dict, l))
 	}
 
+	initialWords := make([][]word, 0, len(s.wordLens))
+
+	for _, cands := range initialCandidates {
+		words := make([]word, 0, len(cands))
+		for _, cand := range cands {
+			w := word{
+				str:     cand,
+				charCts: countChars(cand),
+			}
+			words = append(words, w)
+		}
+		initialWords = append(initialWords, words)
+	}
+
 	// Prune candidates to words for which we have the correct character counts.
 	{
-		for i, cands := range initialCandidates {
-			initialCandidates[i] = s.pruneCandidatesByCharCounts(cands)
+		for i, words := range initialWords {
+			initialWords[i] = s.pruneCandidatesByCharCounts(words)
 		}
 	}
 
 	// Prune candidates to words that can be formed contiguously on the grid.
 	{
-		for i, cands := range initialCandidates {
-			initialCandidates[i] = s.pruneCandidatesByPlacement(cands)
+		for i, words := range initialWords {
+			initialWords[i] = s.pruneCandidatesByPlacement(words)
 		}
 	}
 
-	return initialCandidates
+	return initialWords
 }
 
 // pruneCandidatesByCharCounts returns a new slice of candidate strings after
 // filtering out strings that can't be placed on the grid due to missing characters.
-func (s *solver) pruneCandidatesByCharCounts(cands []string) []string {
-	newCands := make([]string, 0, len(cands))
+func (s *solver) pruneCandidatesByCharCounts(cands []word) []word {
+	newCands := make([]word, 0, len(cands))
 
 	for _, w := range cands {
-		if s.haveEnoughCharsForWord(w) {
+		if s.haveEnoughCharsForWord(w.charCts) {
 			newCands = append(newCands, w)
 		}
 	}
@@ -373,23 +392,26 @@ func (s *solver) pruneCandidatesByCharCounts(cands []string) []string {
 
 // pruneCandidatesByPlacement returns a new slice of candidate strings after
 // filtering out strings that can't be placed contiguously on the grid.
-func (s *solver) pruneCandidatesByPlacement(cands []string) []string {
-	newCands := make([]string, 0, len(cands))
+func (s *solver) pruneCandidatesByPlacement(cands []word) []word {
+	newCands := make([]word, 0, len(cands))
 	for _, cand := range cands {
-		if s.canPlaceWordOnGrid(cand) {
+		if s.canPlaceWordOnGrid(cand.str) {
 			newCands = append(newCands, cand)
 		}
 	}
 	return newCands
 }
 
-func (s *solver) haveEnoughCharsForWord(w string) bool {
-	var wCts [26]byte
-	for _, c := range w {
-		wCts[c-'a']++
+func countChars(s string) [26]byte {
+	var cts [26]byte
+	for _, c := range s {
+		cts[c-'a']++
 	}
+	return cts
+}
 
-	for i, v := range wCts {
+func (s *solver) haveEnoughCharsForWord(cts [26]byte) bool {
+	for i, v := range cts {
 		if v > s.availableChars[i] {
 			return false
 		}

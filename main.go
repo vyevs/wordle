@@ -92,8 +92,6 @@ func solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, err
 	slices.Reverse(wordLens)
 
 	s := solver{
-		dict: dictionary,
-
 		grid:     grid,
 		used:     makeBoolGrid(grid),
 		wordLens: wordLens,
@@ -115,7 +113,7 @@ func solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, err
 		}
 	}
 
-	initialCandidates := s.makeInitialCandidates()
+	initialCandidates := s.makeInitialCandidates(dictionary)
 
 	for i, cands := range initialCandidates {
 		fmt.Printf("word length %d has %d candidates\n", wordLens[i], len(cands))
@@ -146,8 +144,6 @@ func validateInput(grid [][]byte, wordLens []byte) error {
 }
 
 type solver struct {
-	dict []string // All the words to consider.
-
 	grid           [][]byte // Character grid from which to make words.
 	used           [][]bool // Whether we've used a specific grid position.
 	availableChars [26]byte // Count of each available alphabetic character 'a' thru 'z'.
@@ -185,7 +181,6 @@ func (s solution) String(grid [][]byte) string {
 
 	colors := [9]string{"red", "light gray", "green", "yellow", "cyan", "orange", "pink", "purple", "chartreuse"}
 
-	// Write colorful words.
 	{
 		for i, word := range s.words {
 			colorForWord := colors[i]
@@ -332,11 +327,11 @@ func (s *solver) placeWordRec(r, c byte, candidate string, charIdx int, path [][
 	}
 }
 
-func (s *solver) makeInitialCandidates() [][]string {
+func (s *solver) makeInitialCandidates(dict []string) [][]string {
 	initialCandidates := make([][]string, 0, len(s.wordLens))
 	// Initial candidates are all the words with the same len as the words we've looking for.
 	for _, l := range s.wordLens {
-		initialCandidates = append(initialCandidates, getWordsOfLen(s.dict, l))
+		initialCandidates = append(initialCandidates, getWordsOfLen(dict, l))
 	}
 
 	// Prune candidates to words for which we have the correct character counts.

@@ -275,15 +275,13 @@ func (s *solver) placeWordRec(r, c byte, candidate string, charIdx int, path [][
 		s.curSol.words = append(s.curSol.words, candidate)
 		s.curSol.cells = append(s.curSol.cells, slices.Clone(path))
 
-		for i := 0; i < len(candidate); i++ {
-			c := candidate[i]
+		for _, c := range candidate {
 			s.availableChars[c-'a']--
 		}
 
 		s.findSolutions()
 
-		for i := 0; i < len(candidate); i++ {
-			c := candidate[i]
+		for _, c := range candidate {
 			s.availableChars[c-'a']++
 		}
 

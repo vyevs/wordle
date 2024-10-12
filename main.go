@@ -184,7 +184,7 @@ func (s solution) String(grid [][]byte) string {
 	var b strings.Builder
 	b.Grow(128)
 
-	colors := [9]string{"red", "light gray", "green", "yellow", "cyan", "orange", "pink", "purple", "chartreuse"}
+	colors := [9]string{"red", "green", "yellow", "cyan", "orange", "pink", "purple", "chartreuse", "light gray"}
 
 	{
 		for i, word := range s.words {

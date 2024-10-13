@@ -74,6 +74,7 @@ type solver struct {
 type word struct {
 	str           string
 	possiblePaths []path
+	charCts       [26]byte
 }
 
 type solution struct {
@@ -148,7 +149,7 @@ func (s *solver) findSolutions() {
 	cands := s.wordLenCandidates[wordLen]
 
 	for i, candidate := range cands {
-		if s.haveEnoughCharsForStr(candidate.str) {
+		if s.haveEnoughCharsForStr(candidate.charCts) {
 			s.wordLenCandidates[wordLen] = cands[i+1:]
 			s.placeWord(candidate)
 			s.wordLenCandidates[wordLen] = cands
@@ -235,6 +236,7 @@ func makeWordsFromStrs(grid [][]byte, strs []string) []word {
 		w := word{
 			str:           s,
 			possiblePaths: paths,
+			charCts:       countChars(s),
 		}
 		words = append(words, w)
 	}
@@ -248,7 +250,8 @@ func (s *solver) pruneStrsByCharCounts(words []string) []string {
 	newCands := make([]string, 0, len(words))
 
 	for _, w := range words {
-		if s.haveEnoughCharsForStr(w) {
+		cts := countChars(w)
+		if s.haveEnoughCharsForStr(cts) {
 			newCands = append(newCands, w)
 		}
 	}
@@ -264,9 +267,7 @@ func countChars(s string) [26]byte {
 	return cts
 }
 
-func (s *solver) haveEnoughCharsForStr(str string) bool {
-	cts := countChars(str)
-
+func (s *solver) haveEnoughCharsForStr(cts [26]byte) bool {
 	for i, v := range cts {
 		if v > s.availableChars[i] {
 			return false

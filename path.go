@@ -15,8 +15,23 @@ func (p path) clone() path {
 	return slices.Clone(p)
 }
 
-func (pf *pathFinder) getPossiblePaths(word string) []path {
+func (p path) trimLast() path {
+	return p[:len(p)-1]
+}
 
+func getPossiblePaths(grid [][]byte, word string) []path {
+	pf := pathFinder{
+		grid:    grid,
+		curPath: make(path, 0, len(word)),
+	}
+
+	for r, row := range grid {
+		for c := range row {
+			pf.walkPossiblePath(word, byte(r), byte(c))
+		}
+	}
+
+	return pf.allPaths
 }
 
 func (pf *pathFinder) walkPossiblePath(word string, r, c byte) {
@@ -41,8 +56,10 @@ func (pf *pathFinder) walkPossiblePath(word string, r, c byte) {
 
 	// Mark this grid cell as being unusable for the rest of this path walk.
 	pf.grid[r][c] = 0
+	pf.curPath = append(pf.curPath, [2]byte{r, c})
 	defer func() {
 		pf.grid[r][c] = char
+		pf.curPath = pf.curPath.trimLast()
 	}()
 
 	restOfWord := word[1:]

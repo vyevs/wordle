@@ -434,32 +434,6 @@ func (s *solver) haveEnoughCharsForWord(cts [26]byte) bool {
 	return true
 }
 
-// getPossiblePaths returns all the paths that the provided word can take on the grid.
-// An empty slice return indicates that there are no such paths, the word cannot be placed on the grid.
-func (s *solver) getPossiblePaths(word string) [][][2]byte {
-	var out [][][2]byte
-
-	firstChar := word[0]
-	for r, row := range s.grid {
-		for c, char := range row {
-			if char != firstChar {
-				continue
-			}
-
-			s.walkPossiblePath(word, byte(r), byte(c))
-			if len(path) != 0 {
-				out = append(out, path)
-			}
-		}
-	}
-
-	return out
-}
-
-func (s *solver) walkPossiblePath(word string, r, c byte, curPath [][2]byte, allPaths [][][2]byte) {
-
-}
-
 // canPlaceWordOnGrid returns whether word can be placed on the grid in it's current state.
 func (s *solver) canPlaceWordOnGrid(word string) bool {
 	firstChar := word[0]

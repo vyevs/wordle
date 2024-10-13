@@ -277,6 +277,7 @@ func (s *solver) placeWord(word string) {
 	}
 }
 
+// TODO: Instead of walking the path for the current word, computer each word's possible placements at the beginning!
 func (s *solver) placeWordRec(r, c byte, candidate string, charIdx int, path [][2]byte) {
 	if s.used[r][c] {
 		return

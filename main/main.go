@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	if true {
+	if false {
 		f, err := os.Create("cpu.prof")
 		if err != nil {
 			log.Fatal("could not create CPU profile: ", err)

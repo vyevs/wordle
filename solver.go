@@ -169,7 +169,6 @@ func (s solution) String(grid [][]byte) string {
 }
 
 func (s *solver) solve() ([]solution, error) {
-
 	s.findSolutions()
 
 	return s.solutions, nil

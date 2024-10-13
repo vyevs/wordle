@@ -96,7 +96,6 @@ func solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, err
 
 	s := solver{
 		grid:     grid,
-		used:     makeInitialUsedGrid(grid),
 		wordLens: wordLens,
 
 		solutions: make([]solution, 0, 1024),
@@ -162,7 +161,6 @@ func validateInput(grid [][]byte, wordLens []byte) error {
 
 type solver struct {
 	grid           [][]byte // Character grid from which to make words.
-	used           [][]bool // Whether we've used a specific grid position.
 	availableChars [26]byte // Count of each available alphabetic character 'a' thru 'z'.
 
 	// The locations of each char 'a' through 'z' in the grid. charLocations[char][i] is [2]int{rowIndex, colIndex}.
@@ -279,18 +277,15 @@ func (s *solver) placeWord(word string) {
 
 // TODO: Instead of walking the path for the current word, computer each word's possible placements at the beginning!
 func (s *solver) placeWordRec(r, c byte, candidate string, charIdx int, path [][2]byte) {
-	if s.used[r][c] {
-		return
-	}
-
 	char := candidate[charIdx]
 	if char != s.grid[r][c] {
 		return
 	}
 
-	s.used[r][c] = true
+	// Mark this grid cell as not usable for the rest of this word placement.
+	s.grid[r][c] = 0
 	defer func() {
-		s.used[r][c] = false
+		s.grid[r][c] = char
 	}()
 
 	path = append(path, [2]byte{r, c})
@@ -462,10 +457,6 @@ func (s *solver) canPlaceWordRec(r, c byte, candidate string, charIdx int) bool 
 		return false
 	}
 
-	if s.used[r][c] {
-		return false
-	}
-
 	char := candidate[charIdx]
 	if char != s.grid[r][c] {
 		return false
@@ -475,9 +466,9 @@ func (s *solver) canPlaceWordRec(r, c byte, candidate string, charIdx int) bool 
 		return true
 	}
 
-	s.used[r][c] = true
+	s.grid[r][c] = 0
 	defer func() {
-		s.used[r][c] = false
+		s.grid[r][c] = char
 	}()
 
 	nextCharIdx := charIdx + 1
@@ -586,18 +577,6 @@ func countAlphaChars(s [][]byte) int {
 		}
 	}
 	return ct
-}
-
-func makeInitialUsedGrid(g [][]byte) [][]bool {
-	out := make([][]bool, 0, len(g))
-	for _, row := range g {
-		outRow := make([]bool, 0, len(row))
-		for _, char := range row {
-			outRow = append(outRow, char == emptyCellChar)
-		}
-		out = append(out, outRow)
-	}
-	return out
 }
 
 func gridStr(g [][]byte) string {

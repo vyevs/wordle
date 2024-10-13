@@ -215,7 +215,7 @@ func (s *solver) makeInitialCandidates(dict []string) {
 		s.wordLenCandidates[wLen] = cands
 	}
 
-	/*if s.verbose {
+	/*{
 		fmt.Printf("%d unique words can be placed contiguously on the grid\n", len(wordCandidates))
 
 		for l, cands := range s.wordLenCandidates {

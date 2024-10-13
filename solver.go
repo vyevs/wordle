@@ -1,13 +1,8 @@
 package wordle
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
-	"io"
-	"os"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/vyevs/ansi"
@@ -39,36 +34,7 @@ func Solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, err
 		}
 	}
 
-	for r, row := range s.grid {
-		for c, char := range row {
-			if char == emptyCellChar {
-				continue
-			}
-
-			loc := [2]byte{byte(r), byte(c)}
-
-			s.charLocations[char-'a'] = append(s.charLocations[char-'a'], loc)
-		}
-	}
-
-	initialCandidates := s.makeInitialCandidates(dictionary)
-
-	for i, cands := range initialCandidates {
-		fmt.Printf("word length %d has %d candidates", wordLens[i], len(cands))
-		if len(cands) < 10 {
-			fmt.Print(": [")
-			for _, c := range cands {
-				fmt.Print(c.str, " ")
-			}
-			fmt.Print("]")
-		}
-		fmt.Println()
-	}
-
-	s.wordLenCandidates = make(map[byte][]word, len(wordLens))
-	for i, l := range wordLens {
-		s.wordLenCandidates[l] = initialCandidates[i]
-	}
+	s.makeInitialCandidates(dictionary)
 
 	return s.solve()
 }
@@ -93,9 +59,6 @@ type solver struct {
 	grid           [][]byte // Character grid from which to make words.
 	availableChars [26]byte // Count of each available alphabetic character 'a' thru 'z'.
 
-	// The locations of each char 'a' through 'z' in the grid. charLocations[char][i] is [2]int{rowIndex, colIndex}.
-	// Never changes.
-	charLocations [26][][2]byte
 	// The lengths of the words we're looking for. Never changes.
 	wordLens []byte
 
@@ -109,8 +72,8 @@ type solver struct {
 }
 
 type word struct {
-	str     string
-	charCts [26]byte
+	str           string
+	possiblePaths []path
 }
 
 type solution struct {
@@ -185,162 +148,111 @@ func (s *solver) findSolutions() {
 	cands := s.wordLenCandidates[wordLen]
 
 	for i, candidate := range cands {
-		if s.haveEnoughCharsForWord(candidate.charCts) {
+		if s.haveEnoughCharsForStr(candidate.str) {
 			s.wordLenCandidates[wordLen] = cands[i+1:]
-			s.placeWord(candidate.str)
+			s.placeWord(candidate)
 			s.wordLenCandidates[wordLen] = cands
 		}
 	}
 }
 
-func (s *solver) placeWord(word string) {
-	firstChar := word[0]
-	firstCharLocs := s.charLocations[firstChar-'a']
+func (s *solver) placeWord(w word) {
+	paths := w.possiblePaths
 
-	var path [16][2]byte
-	for _, loc := range firstCharLocs {
-		s.placeWordRec(loc[0], loc[1], word, 0, path[:0])
-	}
-}
+OUTER:
+	for _, path := range paths {
+		for _, cell := range path {
+			r, c := cell[0], cell[1]
 
-// TODO: Instead of walking the path for the current word, computer each word's possible placements at the beginning!
-func (s *solver) placeWordRec(r, c byte, candidate string, charIdx int, path [][2]byte) {
-	char := candidate[charIdx]
-	if char != s.grid[r][c] {
-		return
-	}
-
-	// Mark this grid cell as not usable for the rest of this word placement.
-	s.grid[r][c] = 0
-	defer func() {
-		s.grid[r][c] = char
-	}()
-
-	path = append(path, [2]byte{r, c})
-
-	if charIdx == len(candidate)-1 {
-		s.curSol.words = append(s.curSol.words, candidate)
-		s.curSol.paths = append(s.curSol.paths, slices.Clone(path))
-
-		for _, c := range candidate {
-			s.availableChars[c-'a']--
+			if s.grid[r][c] == 0 {
+				continue OUTER
+			}
 		}
+
+		// The word can be placed on the current path.
+		// Mark the cells of that path as used.
+
+		for i, cell := range path {
+			r, c := cell[0], cell[1]
+			s.grid[r][c] = 0
+			s.availableChars[w.str[i]-'a']--
+		}
+
+		s.curSol.words = append(s.curSol.words, w.str)
+		s.curSol.paths = append(s.curSol.paths, path)
 
 		s.findSolutions()
 
-		for _, c := range candidate {
-			s.availableChars[c-'a']++
+		// Mark the cells of the path as unused.
+		for i, cell := range path {
+			r, c := cell[0], cell[1]
+			s.grid[r][c] = w.str[i]
+			s.availableChars[w.str[i]-'a']++
 		}
-
 		s.curSol.words = s.curSol.words[:len(s.curSol.words)-1]
 		s.curSol.paths = s.curSol.paths[:len(s.curSol.paths)-1]
 
-		return
-	}
-
-	nextCharIdx := charIdx + 1
-
-	// If we can move up.
-	if r > 0 {
-		s.placeWordRec(r-1, c, candidate, nextCharIdx, path)
-
-		// If we can move left and up.
-		if c > 0 {
-			s.placeWordRec(r-1, c-1, candidate, nextCharIdx, path)
-		}
-		// If we can move right and up.
-		if c < byte(len(s.grid[r])-1) {
-			s.placeWordRec(r-1, c+1, candidate, nextCharIdx, path)
-		}
-	}
-
-	// If we can move down.
-	if r < byte(len(s.grid))-1 {
-		s.placeWordRec(r+1, c, candidate, nextCharIdx, path)
-
-		// If we can move left and down.
-		if c > 0 {
-			s.placeWordRec(r+1, c-1, candidate, nextCharIdx, path)
-		}
-
-		// If we can move right and down.
-		if c < byte(len(s.grid[r])-1) {
-			s.placeWordRec(r+1, c+1, candidate, nextCharIdx, path)
-		}
-	}
-
-	// If we can move left.
-	if c > 0 {
-		s.placeWordRec(r, c-1, candidate, nextCharIdx, path)
-	}
-
-	// If we can move right.
-	if c < byte(len(s.grid[r])-1) {
-		s.placeWordRec(r, c+1, candidate, nextCharIdx, path)
 	}
 }
 
-func (s *solver) makeInitialCandidates(dict []string) [][]word {
-	initialCandidates := make([][]string, 0, len(s.wordLens))
-	// Initial candidates are all the words with the same len as the words we've looking for.
-	for _, l := range s.wordLens {
-		initialCandidates = append(initialCandidates, getWordsOfLen(dict, l))
-	}
+func (s *solver) makeInitialCandidates(dict []string) {
+	initialCandidates := getStrsOfLens(dict, s.wordLens)
+	initialCandidates = s.pruneStrsByCharCounts(initialCandidates)
 
-	initialWords := make([][]word, 0, len(s.wordLens))
+	wordCandidates := makeWordsFromStrs(s.grid, initialCandidates)
 
-	for _, cands := range initialCandidates {
-		words := make([]word, 0, len(cands))
-		for _, cand := range cands {
-			w := word{
-				str:     cand,
-				charCts: countChars(cand),
-			}
-			words = append(words, w)
+	fmt.Printf("%d unique words can be placed contiguously on the grid\n", len(wordCandidates))
+
+	s.wordLenCandidates = make(map[byte][]word, len(s.wordLens))
+	for _, w := range wordCandidates {
+		wLen := byte(len(w.str))
+
+		cands := s.wordLenCandidates[wLen]
+		if len(cands) == 0 {
+			cands = make([]word, 0, 1024)
 		}
-		initialWords = append(initialWords, words)
+
+		cands = append(cands, w)
+		s.wordLenCandidates[wLen] = cands
 	}
 
-	// Prune candidates to words for which we have the correct character counts.
-	{
-		for i, words := range initialWords {
-			initialWords[i] = s.pruneCandidatesByCharCounts(words)
+	for l, cands := range s.wordLenCandidates {
+		fmt.Printf("%d length %d word candidates\n", len(cands), l)
+	}
+}
+
+func makeWordsFromStrs(grid [][]byte, strs []string) []word {
+	words := make([]word, 0, len(strs))
+
+	for _, s := range strs {
+		paths := getPossiblePaths(grid, s)
+		if len(paths) == 0 {
+			// This string cannot be placed contiguously on the grid.
+			continue
 		}
-	}
 
-	// Prune candidates to words that can be formed contiguously on the grid.
-	{
-		for i, words := range initialWords {
-			initialWords[i] = s.pruneCandidatesByPlacement(words)
+		// This string can be placed contiguously on the grid. Possibly on multiple paths.
+		w := word{
+			str:           s,
+			possiblePaths: paths,
 		}
+		words = append(words, w)
 	}
 
-	return initialWords
+	return words
 }
 
 // pruneCandidatesByCharCounts returns a new slice of candidate strings after
 // filtering out strings that can't be placed on the grid due to missing characters.
-func (s *solver) pruneCandidatesByCharCounts(cands []word) []word {
-	newCands := make([]word, 0, len(cands))
+func (s *solver) pruneStrsByCharCounts(words []string) []string {
+	newCands := make([]string, 0, len(words))
 
-	for _, w := range cands {
-		if s.haveEnoughCharsForWord(w.charCts) {
+	for _, w := range words {
+		if s.haveEnoughCharsForStr(w) {
 			newCands = append(newCands, w)
 		}
 	}
 
-	return newCands
-}
-
-// pruneCandidatesByPlacement returns a new slice of candidate strings after
-// filtering out strings that can't be placed contiguously on the grid.
-func (s *solver) pruneCandidatesByPlacement(cands []word) []word {
-	newCands := make([]word, 0, len(cands))
-	for _, cand := range cands {
-		if s.canPlaceWordOnGrid(cand.str) {
-			newCands = append(newCands, cand)
-		}
-	}
 	return newCands
 }
 
@@ -352,7 +264,9 @@ func countChars(s string) [26]byte {
 	return cts
 }
 
-func (s *solver) haveEnoughCharsForWord(cts [26]byte) bool {
+func (s *solver) haveEnoughCharsForStr(str string) bool {
+	cts := countChars(str)
+
 	for i, v := range cts {
 		if v > s.availableChars[i] {
 			return false
@@ -362,137 +276,19 @@ func (s *solver) haveEnoughCharsForWord(cts [26]byte) bool {
 	return true
 }
 
-// canPlaceWordOnGrid returns whether word can be placed on the grid in it's current state.
-func (s *solver) canPlaceWordOnGrid(word string) bool {
-	firstChar := word[0]
-	firstCharLocs := s.charLocations[firstChar-'a']
-	for _, loc := range firstCharLocs {
-		if s.canPlaceWordRec(loc[0], loc[1], word, 0) {
-			return true
-		}
-	}
+// getStrsOfLens returns all words in dict that are of a length in lens.
+func getStrsOfLens(dict []string, lens []byte) []string {
+	lens = slices.Compact(slices.Clone(lens))
 
-	return false
-}
-
-func (s *solver) canPlaceWordRec(r, c byte, candidate string, charIdx int) bool {
-	// If row is out of bounds, we can't place a char in this direction.
-	if r >= byte(len(s.grid)) {
-		return false
-	}
-	// If col is out of bounds, we can't place a char in this direction.
-	if c >= byte(len(s.grid[r])) {
-		return false
-	}
-
-	char := candidate[charIdx]
-	if char != s.grid[r][c] {
-		return false
-	}
-
-	if charIdx == len(candidate)-1 {
-		return true
-	}
-
-	s.grid[r][c] = 0
-	defer func() {
-		s.grid[r][c] = char
-	}()
-
-	nextCharIdx := charIdx + 1
-	return s.canPlaceWordRec(r-1, c, candidate, nextCharIdx) ||
-		s.canPlaceWordRec(r+1, c, candidate, nextCharIdx) ||
-		s.canPlaceWordRec(r, c-1, candidate, nextCharIdx) ||
-		s.canPlaceWordRec(r, c+1, candidate, nextCharIdx) ||
-		s.canPlaceWordRec(r-1, c-1, candidate, nextCharIdx) ||
-		s.canPlaceWordRec(r-1, c+1, candidate, nextCharIdx) ||
-		s.canPlaceWordRec(r+1, c-1, candidate, nextCharIdx) ||
-		s.canPlaceWordRec(r+1, c+1, candidate, nextCharIdx)
-}
-
-func getWordsOfLen(dict []string, l byte) []string {
-	out := make([]string, 0, 1024*16)
+	out := make([]string, 0, len(dict))
 	for _, w := range dict {
-		if l == byte(len(w)) {
-			out = append(out, w)
+		for _, l := range lens {
+			if l == byte(len(w)) {
+				out = append(out, w)
+			}
 		}
 	}
 	return out
-}
-
-func ReadDictionaryFromFile(file string) ([]string, error) {
-	bs, err := os.ReadFile(file)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %v", err)
-	}
-	return ReadDictionary(bytes.NewReader(bs))
-}
-
-func ReadDictionary(r io.Reader) ([]string, error) {
-	sc := bufio.NewScanner(r)
-
-	dict := make([]string, 0, 1<<19)
-	for sc.Scan() {
-		line := sc.Text()
-		line = strings.TrimSpace(line)
-		if line != "" {
-			dict = append(dict, line)
-		}
-	}
-	if err := sc.Err(); err != nil {
-		return nil, fmt.Errorf("scanner error: %v", err)
-	}
-
-	return dict, nil
-}
-
-func ReadPuzzleFromFile(file string) ([][]byte, []byte, error) {
-	bs, err := os.ReadFile(file)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read file: %v", err)
-	}
-	return ReadPuzzle(bytes.NewReader(bs))
-}
-
-func ReadPuzzle(r io.Reader) ([][]byte, []byte, error) {
-	grid := make([][]byte, 0)
-
-	sc := bufio.NewScanner(r)
-	for sc.Scan() {
-		line := sc.Text()
-		if line == "" {
-			break
-		}
-
-		gridLine := make([]byte, 0, len(line))
-		for i := 0; i < len(line); i++ {
-			c := line[i]
-			gridLine = append(gridLine, c)
-		}
-		grid = append(grid, gridLine)
-	}
-	if err := sc.Err(); err != nil {
-		return nil, nil, fmt.Errorf("error reading grid: %v", err)
-	}
-
-	wordLens := make([]byte, 0)
-	for sc.Scan() {
-		line := sc.Text()
-		if line == "" {
-			break
-		}
-
-		wordLen, err := strconv.Atoi(line)
-		if err != nil {
-			return nil, nil, fmt.Errorf("invalid word length %q: %v", line, err)
-		}
-		wordLens = append(wordLens, byte(wordLen))
-	}
-	if err := sc.Err(); err != nil {
-		return nil, nil, fmt.Errorf("error reading word lengths: %v", err)
-	}
-
-	return grid, wordLens, nil
 }
 
 func countAlphaChars(s [][]byte) int {

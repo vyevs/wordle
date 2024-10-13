@@ -1,13 +1,8 @@
 package wordle
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
-	"io"
-	"os"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/vyevs/ansi"
@@ -270,7 +265,7 @@ func (s *solver) makeInitialCandidates(dict []string) {
 
 	wordCandidates := makeWordsFromStrs(s.grid, initialCandidates)
 
-	fmt.Printf("%d words can be placed contiguously on the grid\n", len(wordCandidates))
+	fmt.Printf("%d unique words can be placed contiguously on the grid\n", len(wordCandidates))
 
 	s.wordLenCandidates = make(map[byte][]word, len(s.wordLens))
 	for _, w := range wordCandidates {
@@ -288,8 +283,6 @@ func (s *solver) makeInitialCandidates(dict []string) {
 	for l, cands := range s.wordLenCandidates {
 		fmt.Printf("%d length %d word candidates\n", len(cands), l)
 	}
-
-	os.Exit(1)
 }
 
 func makeWordsFromStrs(grid [][]byte, strs []string) []word {
@@ -298,9 +291,11 @@ func makeWordsFromStrs(grid [][]byte, strs []string) []word {
 	for _, s := range strs {
 		paths := getPossiblePaths(grid, s)
 		if len(paths) == 0 {
+			// This string cannot be placed contiguously on the grid.
 			continue
 		}
 
+		// This string can be placed contiguously on the grid. Possibly on multiple paths.
 		w := word{
 			str:           s,
 			possiblePaths: paths,
@@ -325,18 +320,6 @@ func (s *solver) pruneStrsByCharCounts(words []string) []string {
 	return newCands
 }
 
-// pruneCandidatesByPlacement returns a new slice of candidate strings after
-// filtering out strings that can't be placed contiguously on the grid.
-func (s *solver) pruneCandidatesByPlacement(cands []word) []word {
-	newCands := make([]word, 0, len(cands))
-	for _, cand := range cands {
-		if s.canPlaceWordOnGrid(cand.str) {
-			newCands = append(newCands, cand)
-		}
-	}
-	return newCands
-}
-
 func countChars(s string) [26]byte {
 	var cts [26]byte
 	for _, c := range s {
@@ -357,56 +340,10 @@ func (s *solver) haveEnoughCharsForStr(str string) bool {
 	return true
 }
 
-// canPlaceWordOnGrid returns whether word can be placed on the grid in it's current state.
-func (s *solver) canPlaceWordOnGrid(word string) bool {
-	firstChar := word[0]
-	firstCharLocs := s.charLocations[firstChar-'a']
-	for _, loc := range firstCharLocs {
-		if s.canPlaceWordRec(loc[0], loc[1], word, 0) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (s *solver) canPlaceWordRec(r, c byte, candidate string, charIdx int) bool {
-	// If row is out of bounds, we can't place a char in this direction.
-	if r >= byte(len(s.grid)) {
-		return false
-	}
-	// If col is out of bounds, we can't place a char in this direction.
-	if c >= byte(len(s.grid[r])) {
-		return false
-	}
-
-	char := candidate[charIdx]
-	if char != s.grid[r][c] {
-		return false
-	}
-
-	if charIdx == len(candidate)-1 {
-		return true
-	}
-
-	s.grid[r][c] = 0
-	defer func() {
-		s.grid[r][c] = char
-	}()
-
-	nextCharIdx := charIdx + 1
-	return s.canPlaceWordRec(r-1, c, candidate, nextCharIdx) ||
-		s.canPlaceWordRec(r+1, c, candidate, nextCharIdx) ||
-		s.canPlaceWordRec(r, c-1, candidate, nextCharIdx) ||
-		s.canPlaceWordRec(r, c+1, candidate, nextCharIdx) ||
-		s.canPlaceWordRec(r-1, c-1, candidate, nextCharIdx) ||
-		s.canPlaceWordRec(r-1, c+1, candidate, nextCharIdx) ||
-		s.canPlaceWordRec(r+1, c-1, candidate, nextCharIdx) ||
-		s.canPlaceWordRec(r+1, c+1, candidate, nextCharIdx)
-}
-
 // getStrsOfLens returns all words in dict that are of a length in lens.
 func getStrsOfLens(dict []string, lens []byte) []string {
+	lens = slices.Compact(lens)
+
 	out := make([]string, 0, len(dict))
 	for _, w := range dict {
 		for _, l := range lens {
@@ -416,81 +353,6 @@ func getStrsOfLens(dict []string, lens []byte) []string {
 		}
 	}
 	return out
-}
-
-func ReadDictionaryFromFile(file string) ([]string, error) {
-	bs, err := os.ReadFile(file)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %v", err)
-	}
-	return ReadDictionary(bytes.NewReader(bs))
-}
-
-func ReadDictionary(r io.Reader) ([]string, error) {
-	sc := bufio.NewScanner(r)
-
-	dict := make([]string, 0, 1<<19)
-	for sc.Scan() {
-		line := sc.Text()
-		line = strings.TrimSpace(line)
-		if line != "" {
-			dict = append(dict, line)
-		}
-	}
-	if err := sc.Err(); err != nil {
-		return nil, fmt.Errorf("scanner error: %v", err)
-	}
-
-	return dict, nil
-}
-
-func ReadPuzzleFromFile(file string) ([][]byte, []byte, error) {
-	bs, err := os.ReadFile(file)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read file: %v", err)
-	}
-	return ReadPuzzle(bytes.NewReader(bs))
-}
-
-func ReadPuzzle(r io.Reader) ([][]byte, []byte, error) {
-	grid := make([][]byte, 0)
-
-	sc := bufio.NewScanner(r)
-	for sc.Scan() {
-		line := sc.Text()
-		if line == "" {
-			break
-		}
-
-		gridLine := make([]byte, 0, len(line))
-		for i := 0; i < len(line); i++ {
-			c := line[i]
-			gridLine = append(gridLine, c)
-		}
-		grid = append(grid, gridLine)
-	}
-	if err := sc.Err(); err != nil {
-		return nil, nil, fmt.Errorf("error reading grid: %v", err)
-	}
-
-	wordLens := make([]byte, 0)
-	for sc.Scan() {
-		line := sc.Text()
-		if line == "" {
-			break
-		}
-
-		wordLen, err := strconv.Atoi(line)
-		if err != nil {
-			return nil, nil, fmt.Errorf("invalid word length %q: %v", line, err)
-		}
-		wordLens = append(wordLens, byte(wordLen))
-	}
-	if err := sc.Err(); err != nil {
-		return nil, nil, fmt.Errorf("error reading word lengths: %v", err)
-	}
-
-	return grid, wordLens, nil
 }
 
 func countAlphaChars(s [][]byte) int {

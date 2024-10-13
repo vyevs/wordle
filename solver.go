@@ -1,91 +1,21 @@
-package main
+package wordle
 
 import (
 	"bufio"
 	"bytes"
-	"flag"
 	"fmt"
 	"io"
-	"log"
 	"os"
-	"runtime/pprof"
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/vyevs/ansi"
 )
 
-func main() {
-	if true {
-		f, err := os.Create("cpu.prof")
-		if err != nil {
-			log.Fatal("could not create CPU profile: ", err)
-		}
-		defer f.Close() // error handling omitted for example
-		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal("could not start CPU profile: ", err)
-		}
-		defer pprof.StopCPUProfile()
-	}
-
-	defer timeIt(time.Now(), "Everything")
-
-	err := myMain()
-	if err != nil {
-		fmt.Printf("error: %v\n", err)
-	}
-}
-
-func myMain() error {
-	var dictFilePath, puzzleFilePath string
-	flag.StringVar(&dictFilePath, "d", "dictionaries/words_alpha.txt", "path to the dictionary file, optional")
-	flag.StringVar(&puzzleFilePath, "p", "", "path to the puzzle file")
-
-	var verbose bool
-	flag.BoolVar(&verbose, "v", false, "whether to print verbose info")
-
-	flag.Parse()
-
-	if puzzleFilePath == "" {
-		return fmt.Errorf("provide a puzzle file using -p switch")
-	}
-
-	dict, err := readDictionaryFromFile(dictFilePath)
-	if err != nil {
-		return fmt.Errorf("failed to get dictionary: %v", err)
-	}
-
-	fmt.Printf("The dictionary contains %d words\n", len(dict))
-
-	grid, wordLens, err := readPuzzleFromFile(puzzleFilePath)
-	if err != nil {
-		return fmt.Errorf("failed to read puzzle: %v", err)
-	}
-
-	fmt.Println("grid:")
-	fmt.Print(gridStr(grid))
-	fmt.Printf("looking for %d words of lengths %v\n", len(wordLens), wordLens)
-
-	solutions, err := solve(grid, wordLens, dict)
-	if err != nil {
-		return fmt.Errorf("failed to solve: %v", err)
-	}
-
-	fmt.Printf("found %d solutions\n", len(solutions))
-	if verbose {
-		for i, s := range solutions {
-			fmt.Printf("%3d\n%v\n", i+1, s.String(grid))
-		}
-	}
-
-	return nil
-}
-
 const emptyCellChar = '.'
 
-func solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, error) {
+func Solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, error) {
 	if err := validateInput(grid, wordLens); err != nil {
 		return nil, err
 	}
@@ -185,13 +115,13 @@ type word struct {
 
 type solution struct {
 	words []string
-	cells [][][2]byte
+	paths []path
 }
 
 func (s solution) clone() solution {
 	return solution{
 		words: slices.Clone(s.words),
-		cells: slices.Clone(s.cells),
+		paths: slices.Clone(s.paths),
 	}
 }
 
@@ -214,10 +144,10 @@ func (s solution) String(grid [][]byte) string {
 	}
 
 	cellToColor := make(map[[2]byte]string, len(s.words))
-	for i, wordCells := range s.cells {
-		cellColor := colors[i]
-		for _, cell := range wordCells {
-			cellToColor[cell] = cellColor
+	for i, path := range s.paths {
+		pathColor := colors[i]
+		for _, cell := range path {
+			cellToColor[cell] = pathColor
 		}
 	}
 
@@ -239,7 +169,6 @@ func (s solution) String(grid [][]byte) string {
 }
 
 func (s *solver) solve() ([]solution, error) {
-	defer timeIt(time.Now(), "Solving")
 
 	s.findSolutions()
 
@@ -292,7 +221,7 @@ func (s *solver) placeWordRec(r, c byte, candidate string, charIdx int, path [][
 
 	if charIdx == len(candidate)-1 {
 		s.curSol.words = append(s.curSol.words, candidate)
-		s.curSol.cells = append(s.curSol.cells, slices.Clone(path))
+		s.curSol.paths = append(s.curSol.paths, slices.Clone(path))
 
 		for _, c := range candidate {
 			s.availableChars[c-'a']--
@@ -305,7 +234,7 @@ func (s *solver) placeWordRec(r, c byte, candidate string, charIdx int, path [][
 		}
 
 		s.curSol.words = s.curSol.words[:len(s.curSol.words)-1]
-		s.curSol.cells = s.curSol.cells[:len(s.curSol.cells)-1]
+		s.curSol.paths = s.curSol.paths[:len(s.curSol.paths)-1]
 
 		return
 	}
@@ -492,15 +421,15 @@ func getWordsOfLen(dict []string, l byte) []string {
 	return out
 }
 
-func readDictionaryFromFile(file string) ([]string, error) {
+func ReadDictionaryFromFile(file string) ([]string, error) {
 	bs, err := os.ReadFile(file)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %v", err)
 	}
-	return readDictionary(bytes.NewReader(bs))
+	return ReadDictionary(bytes.NewReader(bs))
 }
 
-func readDictionary(r io.Reader) ([]string, error) {
+func ReadDictionary(r io.Reader) ([]string, error) {
 	sc := bufio.NewScanner(r)
 
 	dict := make([]string, 0, 1<<19)
@@ -518,15 +447,15 @@ func readDictionary(r io.Reader) ([]string, error) {
 	return dict, nil
 }
 
-func readPuzzleFromFile(file string) ([][]byte, []byte, error) {
+func ReadPuzzleFromFile(file string) ([][]byte, []byte, error) {
 	bs, err := os.ReadFile(file)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read file: %v", err)
 	}
-	return readPuzzle(bytes.NewReader(bs))
+	return ReadPuzzle(bytes.NewReader(bs))
 }
 
-func readPuzzle(r io.Reader) ([][]byte, []byte, error) {
+func ReadPuzzle(r io.Reader) ([][]byte, []byte, error) {
 	grid := make([][]byte, 0)
 
 	sc := bufio.NewScanner(r)
@@ -577,21 +506,4 @@ func countAlphaChars(s [][]byte) int {
 		}
 	}
 	return ct
-}
-
-func gridStr(g [][]byte) string {
-	var b strings.Builder
-	b.Grow(len(g) * len(g[0]))
-	for _, l := range g {
-		for _, c := range l {
-			b.WriteByte(c)
-		}
-		b.WriteByte('\n')
-	}
-
-	return b.String()
-}
-
-func timeIt(start time.Time, s string) {
-	fmt.Printf("%s took %v\n", s, time.Since(start))
 }

@@ -34,18 +34,6 @@ func Solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, err
 		}
 	}
 
-	for r, row := range s.grid {
-		for c, char := range row {
-			if char == emptyCellChar {
-				continue
-			}
-
-			loc := [2]byte{byte(r), byte(c)}
-
-			s.charLocations[char-'a'] = append(s.charLocations[char-'a'], loc)
-		}
-	}
-
 	s.makeInitialCandidates(dictionary)
 
 	return s.solve()
@@ -71,9 +59,6 @@ type solver struct {
 	grid           [][]byte // Character grid from which to make words.
 	availableChars [26]byte // Count of each available alphabetic character 'a' thru 'z'.
 
-	// The locations of each char 'a' through 'z' in the grid. charLocations[char][i] is [2]int{rowIndex, colIndex}.
-	// Never changes.
-	charLocations [26][][2]byte
 	// The lengths of the words we're looking for. Never changes.
 	wordLens []byte
 
@@ -166,19 +151,48 @@ func (s *solver) findSolutions() {
 	for i, candidate := range cands {
 		if s.haveEnoughCharsForStr(candidate.str) {
 			s.wordLenCandidates[wordLen] = cands[i+1:]
-			s.placeWord(candidate.str)
+			s.placeWord(candidate)
 			s.wordLenCandidates[wordLen] = cands
 		}
 	}
 }
 
-func (s *solver) placeWord(word string) {
-	firstChar := word[0]
-	firstCharLocs := s.charLocations[firstChar-'a']
+func (s *solver) placeWord(w word) {
+	paths := w.possiblePaths
 
-	var path [16][2]byte
-	for _, loc := range firstCharLocs {
-		s.placeWordRec(loc[0], loc[1], word, 0, path[:0])
+OUTER:
+	for _, path := range paths {
+		for _, cell := range path {
+			r, c := cell[0], cell[1]
+
+			if s.grid[r][c] == 0 {
+				continue OUTER
+			}
+		}
+
+		// The word can be placed on the current path.
+		// Mark the cells of that path as used.
+
+		for i, cell := range path {
+			r, c := cell[0], cell[1]
+			s.grid[r][c] = 0
+			s.availableChars[w.str[i]-'a']--
+		}
+
+		s.curSol.words = append(s.curSol.words, w.str)
+		s.curSol.paths = append(s.curSol.paths, path)
+
+		s.findSolutions()
+
+		// Mark the cells of the path as unused.
+		for i, cell := range path {
+			r, c := cell[0], cell[1]
+			s.grid[r][c] = w.str[i]
+			s.availableChars[w.str[i]-'a']++
+		}
+		s.curSol.words = s.curSol.words[:len(s.curSol.words)-1]
+		s.curSol.paths = s.curSol.paths[:len(s.curSol.paths)-1]
+
 	}
 }
 

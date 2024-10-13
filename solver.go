@@ -202,8 +202,6 @@ func (s *solver) makeInitialCandidates(dict []string) {
 
 	wordCandidates := makeWordsFromStrs(s.grid, initialCandidates)
 
-	fmt.Printf("%d unique words can be placed contiguously on the grid\n", len(wordCandidates))
-
 	s.wordLenCandidates = make(map[byte][]word, len(s.wordLens))
 	for _, w := range wordCandidates {
 		wLen := byte(len(w.str))
@@ -217,9 +215,14 @@ func (s *solver) makeInitialCandidates(dict []string) {
 		s.wordLenCandidates[wLen] = cands
 	}
 
-	for l, cands := range s.wordLenCandidates {
-		fmt.Printf("%d length %d word candidates\n", len(cands), l)
-	}
+	/*if s.verbose {
+		fmt.Printf("%d unique words can be placed contiguously on the grid\n", len(wordCandidates))
+
+		for l, cands := range s.wordLenCandidates {
+			fmt.Printf("%d length %d word candidates\n", len(cands), l)
+		}
+	}*/
+
 }
 
 func makeWordsFromStrs(grid [][]byte, strs []string) []word {

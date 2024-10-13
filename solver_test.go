@@ -5,7 +5,7 @@ import (
 )
 
 func BenchmarkSolve(b *testing.B) {
-	grid, wordLens, err := ReadPuzzleFromFile("puzzles/flowers3.txt")
+	grid, wordLens, err := ReadPuzzleFromFile("puzzles/wordle3/flowers/7.txt")
 	if err != nil {
 		b.Fatalf("failed to read puzzle: %v", err)
 	}

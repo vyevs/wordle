@@ -342,7 +342,7 @@ func (s *solver) haveEnoughCharsForStr(str string) bool {
 
 // getStrsOfLens returns all words in dict that are of a length in lens.
 func getStrsOfLens(dict []string, lens []byte) []string {
-	lens = slices.Compact(lens)
+	lens = slices.Compact(slices.Clone(lens))
 
 	out := make([]string, 0, len(dict))
 	for _, w := range dict {

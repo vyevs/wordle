@@ -90,7 +90,7 @@ type solver struct {
 type word struct {
 	str           string
 	possiblePaths []Path
-	charCts       [26]byte
+	charCts       [][2]byte
 }
 
 type Solution struct {
@@ -270,17 +270,29 @@ func (s *solver) pruneStrsByCharCounts(words []string) []string {
 	return newCands
 }
 
-func countChars(s string) [26]byte {
+func countChars(s string) [][2]byte {
 	var cts [26]byte
 	for _, c := range s {
 		cts[c-'a']++
 	}
-	return cts
+
+	shortCts := make([][2]byte, 0, 16)
+	for i, ct := range cts {
+		if ct == 0 {
+			continue
+		}
+
+		sc := [2]byte{'a' + byte(i), ct}
+		shortCts = append(shortCts, sc)
+	}
+
+	return shortCts
 }
 
-func (s *solver) haveEnoughCharsForStr(cts [26]byte) bool {
-	for i, v := range cts {
-		if v > s.availableChars[i] {
+func (s *solver) haveEnoughCharsForStr(cts [][2]byte) bool {
+	for _, v := range cts {
+		char := v[0] - 'a'
+		if v[1] > s.availableChars[char] {
 			return false
 		}
 	}

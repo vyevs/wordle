@@ -10,7 +10,7 @@ import (
 
 const emptyCellChar = '.'
 
-func Solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, error) {
+func Solve(grid [][]byte, wordLens []byte, dictionary []string) ([]Solution, error) {
 	if err := validateInput(grid, wordLens); err != nil {
 		return nil, err
 	}
@@ -23,7 +23,7 @@ func Solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, err
 		grid:     grid,
 		wordLens: wordLens,
 
-		solutions: make([]solution, 0, 1024),
+		solutions: make([]Solution, 0, 1024),
 	}
 
 	for _, row := range s.grid {
@@ -40,6 +40,16 @@ func Solve(grid [][]byte, wordLens []byte, dictionary []string) ([]solution, err
 }
 
 func validateInput(grid [][]byte, wordLens []byte) error {
+	for r, row := range grid {
+		for c, char := range row {
+			if (char >= 'a' && char <= 'z') || char == emptyCellChar {
+				continue
+			}
+
+			return fmt.Errorf("grid contains invalid character %c at [%d, %d]", char, r, c)
+		}
+	}
+
 	gridSz := countAlphaChars(grid)
 	var wordLensSum int
 	for _, l := range wordLens {
@@ -67,29 +77,29 @@ type solver struct {
 	wordLenCandidates map[byte][]word
 
 	// curSol is the solution we are in the progress of building.
-	curSol    solution
-	solutions []solution
+	curSol    Solution
+	solutions []Solution
 }
 
 type word struct {
 	str           string
-	possiblePaths []path
+	possiblePaths []Path
 	charCts       [26]byte
 }
 
-type solution struct {
+type Solution struct {
 	words []string
-	paths []path
+	paths []Path
 }
 
-func (s solution) clone() solution {
-	return solution{
+func (s Solution) clone() Solution {
+	return Solution{
 		words: slices.Clone(s.words),
 		paths: slices.Clone(s.paths),
 	}
 }
 
-func (s solution) String(grid [][]byte) string {
+func (s Solution) String(grid [][]byte) string {
 	var b strings.Builder
 	b.Grow(128)
 
@@ -132,7 +142,7 @@ func (s solution) String(grid [][]byte) string {
 	return b.String()
 }
 
-func (s *solver) solve() ([]solution, error) {
+func (s *solver) solve() ([]Solution, error) {
 	s.findSolutions()
 
 	return s.solutions, nil

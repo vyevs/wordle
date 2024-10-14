@@ -13,11 +13,11 @@ func TestPathFinder(t *testing.T) {
 
 	tests := []struct {
 		word      string
-		wantPaths []path
+		wantPaths []Path
 	}{
 		{
 			word: "mexico",
-			wantPaths: []path{
+			wantPaths: []Path{
 				{
 					{6, 0}, {5, 1}, {6, 1}, {5, 0}, {4, 0}, {3, 0},
 				},
@@ -25,7 +25,7 @@ func TestPathFinder(t *testing.T) {
 		},
 		{
 			word: "iraq",
-			wantPaths: []path{
+			wantPaths: []Path{
 				{
 					{2, 0}, {1, 0}, {1, 1}, {2, 1},
 				},
@@ -33,7 +33,7 @@ func TestPathFinder(t *testing.T) {
 		},
 		{
 			word: "usa",
-			wantPaths: []path{
+			wantPaths: []Path{
 				{
 					{0, 0}, {0, 1}, {1, 1},
 				},
@@ -55,8 +55,8 @@ func TestPathFinder(t *testing.T) {
 	}
 }
 
-func pathSlicesEqual(ps1, ps2 []path) bool {
-	return slices.EqualFunc(ps1, ps2, func(a, b path) bool {
+func pathSlicesEqual(ps1, ps2 []Path) bool {
+	return slices.EqualFunc(ps1, ps2, func(a, b Path) bool {
 		return slices.Equal(a, b)
 	})
 }

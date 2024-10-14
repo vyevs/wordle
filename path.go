@@ -7,24 +7,17 @@ import (
 	"github.com/vyevs/ansi"
 )
 
-type pathFinder struct {
-	grid [][]byte
+type Path [][2]byte
 
-	curPath  path
-	allPaths []path
-}
-
-type path [][2]byte
-
-func (p path) clone() path {
+func (p Path) clone() Path {
 	return slices.Clone(p)
 }
 
-func (p path) trimLast() path {
+func (p Path) trimLast() Path {
 	return p[:len(p)-1]
 }
 
-func (p path) string(grid [][]byte) string {
+func (p Path) String(grid [][]byte) string {
 	var b strings.Builder
 	b.Grow(128)
 	color := ansi.FGRed
@@ -51,10 +44,10 @@ func (p path) string(grid [][]byte) string {
 	return b.String()
 }
 
-func getPossiblePaths(grid [][]byte, word string) []path {
+func getPossiblePaths(grid [][]byte, word string) []Path {
 	pf := pathFinder{
 		grid:    grid,
-		curPath: make(path, 0, len(word)),
+		curPath: make(Path, 0, len(word)),
 	}
 
 	for r, row := range grid {
@@ -64,6 +57,13 @@ func getPossiblePaths(grid [][]byte, word string) []path {
 	}
 
 	return pf.allPaths
+}
+
+type pathFinder struct {
+	grid [][]byte
+
+	curPath  Path
+	allPaths []Path
 }
 
 func (pf *pathFinder) walkPossiblePath(word string, r, c byte) {

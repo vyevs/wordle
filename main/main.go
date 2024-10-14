@@ -3,10 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
-	"os"
-	"runtime"
-	"runtime/pprof"
 	"strings"
 	"time"
 
@@ -14,35 +10,11 @@ import (
 )
 
 func main() {
-	if true {
-		f, err := os.Create("cpu.prof")
-		if err != nil {
-			log.Fatal("could not create CPU profile: ", err)
-		}
-		defer f.Close() // error handling omitted for example
-		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal("could not start CPU profile: ", err)
-		}
-		defer pprof.StopCPUProfile()
-	}
-
 	defer timeIt(time.Now(), "Everything")
 
 	err := myMain()
 	if err != nil {
 		fmt.Printf("error: %v\n", err)
-	}
-
-	if true {
-		f, err := os.Create("mem.prof")
-		if err != nil {
-			log.Fatal("could not create memory profile: ", err)
-		}
-		defer f.Close() // error handling omitted for example
-		runtime.GC()    // get up-to-date statistics
-		if err := pprof.WriteHeapProfile(f); err != nil {
-			log.Fatal("could not write memory profile: ", err)
-		}
 	}
 }
 
@@ -50,9 +22,6 @@ func myMain() error {
 	var dictFilePath, puzzleFilePath string
 	flag.StringVar(&dictFilePath, "d", "../dictionaries/words_alpha.txt", "path to the dictionary file, optional")
 	flag.StringVar(&puzzleFilePath, "p", "", "path to the puzzle file")
-
-	var verbose bool
-	flag.BoolVar(&verbose, "v", false, "whether to print verbose info")
 
 	flag.Parse()
 
@@ -82,11 +51,9 @@ func myMain() error {
 		return fmt.Errorf("failed to solve: %v", err)
 	}
 
-	fmt.Printf("found %d solutions\n", len(solutions))
-	if verbose {
-		for i, s := range solutions {
-			fmt.Printf("%3d\n%v\n", i+1, s.String(grid))
-		}
+	fmt.Printf("found %d solutions:\n", len(solutions))
+	for i, s := range solutions {
+		fmt.Printf("%3d\n%v\n", i+1, s.String(grid))
 	}
 
 	return nil

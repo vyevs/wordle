@@ -78,7 +78,7 @@ type solver struct {
 
 	// wordLenCandidates maps from the word length that we are looking for to it's current list of candidates.
 	// The lists get pruned as we descend into the search so that we aren't looking at duplicate same-letter words.
-	wordLenCandidates map[byte][]word
+	wordLenCandidates [][]word
 
 	// curSol is the solution we are in the progress of building.
 	curSol    Solution
@@ -210,23 +210,23 @@ OUTER:
 	}
 }
 
-func (s *solver) makeInitialCandidates(dict []string) map[byte][]word {
+func (s *solver) makeInitialCandidates(dict []string) [][]word {
 	initialCandidates := getStrsOfLens(dict, s.wordLens)
 	initialCandidates = s.pruneStrsByCharCounts(initialCandidates)
 
 	wordCandidates := makeWordsFromStrs(s.grid, initialCandidates)
 
-	wordLenCandidates := make(map[byte][]word, len(s.wordLens))
+	wordLenCandidates := make([][]word, slices.Max(s.wordLens)+1)
 	for _, w := range wordCandidates {
-		wLen := byte(len(w.str))
+		wLen := len(w.str)
 
-		cands := s.wordLenCandidates[wLen]
+		cands := wordLenCandidates[wLen]
 		if len(cands) == 0 {
 			cands = make([]word, 0, 1024)
 		}
 
 		cands = append(cands, w)
-		s.wordLenCandidates[wLen] = cands
+		wordLenCandidates[wLen] = cands
 	}
 
 	return wordLenCandidates

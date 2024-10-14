@@ -78,6 +78,8 @@ type solver struct {
 
 	// wordLenCandidates maps from the word length that we are looking for to it's current list of candidates.
 	// The lists get pruned as we descend into the search so that we aren't looking at duplicate same-letter words.
+	// len(wordLenCandidates) == max(wordLens) + 1 so there is an entry for each word length.
+	// i.e. wordLenCandidates[5] are the candidate words of length 5.
 	wordLenCandidates [][]word
 
 	// curSol is the solution we are in the progress of building.
@@ -206,7 +208,6 @@ OUTER:
 		}
 		s.curSol.words = s.curSol.words[:len(s.curSol.words)-1]
 		s.curSol.paths = s.curSol.paths[:len(s.curSol.paths)-1]
-
 	}
 }
 
@@ -216,7 +217,7 @@ func (s *solver) makeInitialCandidates(dict []string) [][]word {
 
 	wordCandidates := makeWordsFromStrs(s.grid, initialCandidates)
 
-	wordLenCandidates := make([][]word, slices.Max(s.wordLens)+1)
+	wordLenCandidates := make([][]word, s.wordLens[0]+1)
 	for _, w := range wordCandidates {
 		wLen := len(w.str)
 

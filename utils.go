@@ -49,7 +49,7 @@ func ReadPuzzleFromFile(file string) ([][]byte, []byte, error) {
 
 // ReadPuzzle reads a puzzle string from r.
 func ReadPuzzle(r io.Reader) ([][]byte, []byte, error) {
-	grid := make([][]byte, 0)
+	grid := make([][]byte, 0, 12)
 
 	sc := bufio.NewScanner(r)
 	for sc.Scan() {
@@ -69,7 +69,7 @@ func ReadPuzzle(r io.Reader) ([][]byte, []byte, error) {
 		return nil, nil, fmt.Errorf("error reading grid: %v", err)
 	}
 
-	wordLens := make([]byte, 0)
+	wordLens := make([]byte, 0, 12)
 	for sc.Scan() {
 		line := sc.Text()
 		if line == "" {

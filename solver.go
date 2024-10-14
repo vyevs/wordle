@@ -90,7 +90,8 @@ type solver struct {
 type word struct {
 	str           string
 	possiblePaths []Path
-	charCts       [][2]byte
+	// The count of each char in str. charCts[i][0] is a letter (between 'a' and 'z') and charCts[i][1] is the count of that letter.
+	charCts [][2]byte
 }
 
 type Solution struct {

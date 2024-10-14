@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// ReadDictionaryFromFile uses ReadDictionary to read from the specified file.
 func ReadDictionaryFromFile(file string) ([]string, error) {
 	bs, err := os.ReadFile(file)
 	if err != nil {
@@ -18,6 +19,7 @@ func ReadDictionaryFromFile(file string) ([]string, error) {
 	return ReadDictionary(bytes.NewReader(bs))
 }
 
+// ReadDictionary reads a newline-delimited sequence of strings from r and returns them in a slice.
 func ReadDictionary(r io.Reader) ([]string, error) {
 	sc := bufio.NewScanner(r)
 
@@ -36,6 +38,7 @@ func ReadDictionary(r io.Reader) ([]string, error) {
 	return dict, nil
 }
 
+// ReadPuzzleFromFile uses ReadPuzzle to read a puzzle from the specified file.
 func ReadPuzzleFromFile(file string) ([][]byte, []byte, error) {
 	bs, err := os.ReadFile(file)
 	if err != nil {
@@ -44,6 +47,7 @@ func ReadPuzzleFromFile(file string) ([][]byte, []byte, error) {
 	return ReadPuzzle(bytes.NewReader(bs))
 }
 
+// ReadPuzzle reads a puzzle string from r.
 func ReadPuzzle(r io.Reader) ([][]byte, []byte, error) {
 	grid := make([][]byte, 0)
 

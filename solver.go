@@ -10,6 +10,10 @@ import (
 
 const emptyCellChar = '.'
 
+// Solve returns all the ways to place len(wordLens) strings on the provided grid.
+// wordLens contains the lengths of the strings to be place.
+// dict is the dictionary of strings to be considered for placement.
+// grid must contains only lowercase alphabet characters ('a' through 'z') or '.' to indicate an empty grid square.
 func Solve(grid [][]byte, wordLens []byte, dictionary []string) ([]Solution, error) {
 	if err := validateInput(grid, wordLens); err != nil {
 		return nil, err
@@ -34,7 +38,7 @@ func Solve(grid [][]byte, wordLens []byte, dictionary []string) ([]Solution, err
 		}
 	}
 
-	s.makeInitialCandidates(dictionary)
+	s.wordLenCandidates = s.makeInitialCandidates(dictionary)
 
 	return s.solve()
 }
@@ -206,13 +210,13 @@ OUTER:
 	}
 }
 
-func (s *solver) makeInitialCandidates(dict []string) {
+func (s *solver) makeInitialCandidates(dict []string) map[byte][]word {
 	initialCandidates := getStrsOfLens(dict, s.wordLens)
 	initialCandidates = s.pruneStrsByCharCounts(initialCandidates)
 
 	wordCandidates := makeWordsFromStrs(s.grid, initialCandidates)
 
-	s.wordLenCandidates = make(map[byte][]word, len(s.wordLens))
+	wordLenCandidates := make(map[byte][]word, len(s.wordLens))
 	for _, w := range wordCandidates {
 		wLen := byte(len(w.str))
 
@@ -225,14 +229,7 @@ func (s *solver) makeInitialCandidates(dict []string) {
 		s.wordLenCandidates[wLen] = cands
 	}
 
-	/*{
-		fmt.Printf("%d unique words can be placed contiguously on the grid\n", len(wordCandidates))
-
-		for l, cands := range s.wordLenCandidates {
-			fmt.Printf("%d length %d word candidates\n", len(cands), l)
-		}
-	}*/
-
+	return wordLenCandidates
 }
 
 func makeWordsFromStrs(grid [][]byte, strs []string) []word {

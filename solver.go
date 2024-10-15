@@ -95,14 +95,14 @@ type word struct {
 }
 
 type Solution struct {
-	words []string
-	paths []Path
+	Words []string
+	Paths []Path
 }
 
 func (s Solution) clone() Solution {
 	return Solution{
-		words: slices.Clone(s.words),
-		paths: slices.Clone(s.paths),
+		Words: slices.Clone(s.Words),
+		Paths: slices.Clone(s.Paths),
 	}
 }
 
@@ -113,7 +113,7 @@ func (s Solution) String(grid [][]byte) string {
 	colors := [9]string{"red", "green", "yellow", "cyan", "orange", "pink", "purple", "chartreuse", "light gray"}
 
 	{
-		for i, word := range s.words {
+		for i, word := range s.Words {
 			colorForWord := colors[i]
 
 			b.WriteString(ansi.FGColorName(colorForWord))
@@ -124,8 +124,8 @@ func (s Solution) String(grid [][]byte) string {
 		b.WriteByte('\n')
 	}
 
-	cellToColor := make(map[[2]byte]string, len(s.words))
-	for i, path := range s.paths {
+	cellToColor := make(map[[2]byte]string, len(s.Words))
+	for i, path := range s.Paths {
 		pathColor := colors[i]
 		for _, cell := range path {
 			cellToColor[cell] = pathColor
@@ -156,12 +156,12 @@ func (s *solver) solve() ([]Solution, error) {
 }
 
 func (s *solver) findSolutions() {
-	if len(s.curSol.words) >= len(s.wordLens) {
+	if len(s.curSol.Words) >= len(s.wordLens) {
 		s.solutions = append(s.solutions, s.curSol.clone())
 		return
 	}
 
-	wordIdx := len(s.curSol.words)
+	wordIdx := len(s.curSol.Words)
 	wordLen := s.wordLens[wordIdx]
 	cands := s.wordLenCandidates[wordLen]
 
@@ -196,8 +196,8 @@ OUTER:
 			s.availableChars[w.str[i]-'a']--
 		}
 
-		s.curSol.words = append(s.curSol.words, w.str)
-		s.curSol.paths = append(s.curSol.paths, path)
+		s.curSol.Words = append(s.curSol.Words, w.str)
+		s.curSol.Paths = append(s.curSol.Paths, path)
 
 		s.findSolutions()
 
@@ -207,8 +207,8 @@ OUTER:
 			s.grid[r][c] = w.str[i]
 			s.availableChars[w.str[i]-'a']++
 		}
-		s.curSol.words = s.curSol.words[:len(s.curSol.words)-1]
-		s.curSol.paths = s.curSol.paths[:len(s.curSol.paths)-1]
+		s.curSol.Words = s.curSol.Words[:len(s.curSol.Words)-1]
+		s.curSol.Paths = s.curSol.Paths[:len(s.curSol.Paths)-1]
 	}
 }
 

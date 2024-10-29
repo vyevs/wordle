@@ -1,0 +1,8 @@
+github.com/vyevs/ansi v0.0.1 h1:Rb48ZKs0kQttxbT1qv/qAceFIrKDuHGPmvXyit2182M=
+github.com/vyevs/ansi v0.0.1/go.mod h1:37S9z2AxYeLZKZcD6ayqd5pS1JPRGVVSBqWPMUY26F0=
+github.com/vyevs/vtools v0.0.12 h1:8ca76nO4xp4BmkgIQlOULmDhawjJFDCxonP2hOIKTEw=
+github.com/vyevs/vtools v0.0.12/go.mod h1:3fS13BRF4hndl05s3Bl2m6razdHekegSiKBAnoRiFd4=
+github.com/vyevs/wordle v0.0.0-20241015010229-7004c75677bd h1:OaO3ipchv4dMbTLlOXQxn289OXNMKlzVEJdQ5Qbo3h0=
+github.com/vyevs/wordle v0.0.0-20241015010229-7004c75677bd/go.mod h1:atU0xKYaIDVElKRubvJbakc9kQSmqCO07bOKrMC7Coc=
+golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c h1:7dEasQXItcW1xKJ2+gg5VOiBnqWrJc+rq0DPKyvvdbY=
+golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c/go.mod h1:NQtJDoLvd6faHhE7m4T/1IY708gDefGGjR/iUW8yQQ8=

@@ -3,14 +3,17 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/fs"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/vyevs/vtools"
 	"github.com/vyevs/wordle"
 )
 
 func main() {
-	defer timeIt(time.Now(), "Everything")
+	defer vtools.TimeIt(time.Now(), "everything")
 
 	err := myMain()
 	if err != nil {
@@ -25,10 +28,14 @@ func myMain() error {
 
 	flag.Parse()
 
-	if puzzleFilePath == "" {
-		return fmt.Errorf("provide a puzzle file using -p switch")
+	if puzzleFilePath != "" {
+		return solveSinglePuzzle(puzzleFilePath, dictFilePath)
 	}
 
+	return solveEmAll(dictFilePath)
+}
+
+func solveSinglePuzzle(puzzleFilePath, dictFilePath string) error {
 	dict, err := wordle.ReadDictionaryFromFile(dictFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to get dictionary: %v", err)
@@ -45,7 +52,7 @@ func myMain() error {
 	fmt.Print(gridStr(grid))
 	fmt.Printf("looking for %d words of lengths %v\n", len(wordLens), wordLens)
 
-	defer timeIt(time.Now(), "solving and printing")
+	defer vtools.TimeIt(time.Now(), "solving and printing")
 	solutions, err := wordle.Solve(grid, wordLens, dict)
 	if err != nil {
 		return fmt.Errorf("failed to solve: %v", err)
@@ -59,8 +66,45 @@ func myMain() error {
 	return nil
 }
 
-func timeIt(start time.Time, s string) {
-	fmt.Printf("%s took %v\n", s, time.Since(start))
+func solveEmAll(dictFilePath string) error {
+	dict, err := wordle.ReadDictionaryFromFile(dictFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to get dictionary: %v", err)
+	}
+
+	walkDir("../puzzles", dict)
+
+	return nil
+}
+
+func walkDir(dir string, dict []string) {
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if path == dir {
+			return nil
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		grid, wordLens, err := wordle.ReadPuzzleFromFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read puzzle: %v", err)
+		}
+
+		start := time.Now()
+		solutions, err := wordle.Solve(grid, wordLens, dict)
+		if err != nil {
+			return fmt.Errorf("failed to solve: %v", err)
+		}
+
+		fmt.Printf("found %5d solutions for %-50q (%s)\n", len(solutions), path, time.Since(start).Round(time.Millisecond))
+
+		return nil
+	})
+
+	if err != nil {
+		fmt.Printf("walk error: %v", err)
+	}
 }
 
 func gridStr(g [][]byte) string {
